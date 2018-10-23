@@ -1659,6 +1659,10 @@ void TextureCacheBase::CopyRenderTargetToTexture(
   u32 scaled_tex_w = g_renderer->EFBToScaledX(srcRect.GetWidth());
   u32 scaled_tex_h = g_renderer->EFBToScaledY(srcRect.GetHeight());
 
+  if (width < 300)
+    scaled_tex_w = width;
+    scaled_tex_h = height;
+
   if (scaleByHalf)
   {
     tex_w /= 2;
