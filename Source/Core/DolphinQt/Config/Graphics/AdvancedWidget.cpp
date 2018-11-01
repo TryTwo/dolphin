@@ -8,6 +8,7 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
+#include <QSlider>
 #include <QSpinBox>
 #include <QVBoxLayout>
 
@@ -19,6 +20,7 @@
 #include "DolphinQt/Config/Graphics/GraphicsBool.h"
 #include "DolphinQt/Config/Graphics/GraphicsChoice.h"
 #include "DolphinQt/Config/Graphics/GraphicsInteger.h"
+#include "DolphinQt/Config/Graphics/GraphicsSlider.h"
 #include "DolphinQt/Config/Graphics/GraphicsWindow.h"
 #include "DolphinQt/Settings.h"
 
@@ -131,6 +133,29 @@ void AdvancedWidget::CreateWidgets()
   misc_layout->addWidget(m_borderless_fullscreen, 1, 1);
 #endif
 
+  auto* efb_box = new QGroupBox(tr("Scaled EFB Copy Exclusions"));
+  auto* efb_layout = new QHBoxLayout();
+  auto* efb_layoutright = new QHBoxLayout();
+  efb_box->setLayout(efb_layout);
+  m_scaled_efb_exclude_enable =
+      new GraphicsBool(tr("Don't scale EFB copy if:"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
+  m_scaled_efb_exclude_slider = new GraphicsSlider(0, 630, Config::GFX_EFB_SCALE_EXCLUDE, 100);
+  m_scaled_efb_exclude_label = new QLabel();
+
+  if (!m_scaled_efb_exclude_enable->isChecked())
+  {
+    m_scaled_efb_exclude_slider->setEnabled(false);
+    m_scaled_efb_exclude_label->setEnabled(false);
+  }
+
+  m_scaled_efb_exclude_label->setContentsMargins(40, 0, 0, 0);
+  m_scaled_efb_exclude_slider->setFixedWidth(250);
+
+  efb_layoutright->addWidget(m_scaled_efb_exclude_label);
+  efb_layoutright->addWidget(m_scaled_efb_exclude_slider);
+  efb_layout->addWidget(m_scaled_efb_exclude_enable);
+  efb_layout->addLayout(efb_layoutright);
+
   // Experimental.
   auto* experimental_box = new QGroupBox(tr("Experimental"));
   auto* experimental_layout = new QGridLayout();
@@ -146,6 +171,7 @@ void AdvancedWidget::CreateWidgets()
   main_layout->addWidget(freelook_box);
   main_layout->addWidget(dump_box);
   main_layout->addWidget(misc_box);
+  main_layout->addWidget(efb_box);
   main_layout->addWidget(experimental_box);
   main_layout->addStretch();
 
@@ -157,6 +183,17 @@ void AdvancedWidget::ConnectWidgets()
   connect(m_load_custom_textures, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
   connect(m_dump_use_ffv1, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
   connect(m_enable_prog_scan, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
+  connect(m_scaled_efb_exclude_enable, &QCheckBox::toggled, [=](bool checked) {
+    m_scaled_efb_exclude_slider->setEnabled(checked);
+    m_scaled_efb_exclude_label->setEnabled(checked);
+  });
+
+  // A &QSlider signal won't fire when game ini's trigger a change, due to a signalblock in
+  // GraphicsSlider
+  connect(m_scaled_efb_exclude_slider, &GraphicsSlider::valueChanged, [=] {
+    m_scaled_efb_exclude_label->setText(tr("Size  <  ") +
+                                        QString::number(m_scaled_efb_exclude_slider->value()));
+  });
   connect(m_enable_freelook, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
 }
 
@@ -166,6 +203,8 @@ void AdvancedWidget::LoadSettings()
   m_dump_bitrate->setEnabled(!Config::Get(Config::GFX_USE_FFV1));
 
   m_enable_prog_scan->setChecked(Config::Get(Config::SYSCONF_PROGRESSIVE_SCAN));
+  m_scaled_efb_exclude_label->setText(tr("Size  <  ") +
+                                      QString::number(m_scaled_efb_exclude_slider->value()));
 
   m_freelook_control_type->setEnabled(Config::Get(Config::GFX_FREE_LOOK));
 }
@@ -249,6 +288,14 @@ void AdvancedWidget::AddDescriptions()
                  "this option may result in a performance improvement on systems with more than "
                  "two CPU cores. Currently, this is limited to the Vulkan backend.\n\nIf unsure, "
                  "leave this checked.");
+  static const char TR_SCALED_EFB_EXCLUDE_DESCRIPTION[] = QT_TR_NOOP(
+      "EFB copies can have different sizes. Scaling up small efb copies can create graphical "
+      "issues, like poor bloom. This slider will exclude efb copies from scaling based on "
+      "their "
+      "width in pixels. \n\n630 = "
+      "exclude the maximum amount. 0 = exclude nothing (same as off).\n\n"
+      "Start on the left and slowly move the slider to the right until the graphical issue "
+      "improves.\n\nIf unsure, leave this unchecked.");
   static const char TR_DEFER_EFB_ACCESS_INVALIDATION_DESCRIPTION[] = QT_TR_NOOP(
       "Defers invalidation of the EFB access cache until a GPU synchronization command "
       "is executed. If disabled, the cache will be invalidated with every draw call. "
@@ -257,8 +304,10 @@ void AdvancedWidget::AddDescriptions()
 
 #ifdef _WIN32
   static const char TR_BORDERLESS_FULLSCREEN_DESCRIPTION[] = QT_TR_NOOP(
-      "Implements fullscreen mode with a borderless window spanning the whole screen instead of "
-      "using exclusive mode. Allows for faster transitions between fullscreen and windowed mode, "
+      "Implements fullscreen mode with a borderless window spanning the whole screen instead "
+      "of "
+      "using exclusive mode. Allows for faster transitions between fullscreen and windowed "
+      "mode, "
       "but slightly increases input latency, makes movement less smooth and slightly decreases "
       "performance.\n\nIf unsure, leave this unchecked.");
 #endif
@@ -273,6 +322,9 @@ void AdvancedWidget::AddDescriptions()
   AddDescription(m_dump_efb_target, TR_DUMP_EFB_DESCRIPTION);
   AddDescription(m_disable_vram_copies, TR_DISABLE_VRAM_COPIES_DESCRIPTION);
   AddDescription(m_use_fullres_framedumps, TR_INTERNAL_RESOLUTION_FRAME_DUMPING_DESCRIPTION);
+  AddDescription(m_scaled_efb_exclude_slider, TR_SCALED_EFB_EXCLUDE_DESCRIPTION);
+  AddDescription(m_scaled_efb_exclude_enable, TR_SCALED_EFB_EXCLUDE_DESCRIPTION);
+  AddDescription(m_scaled_efb_exclude_label, TR_SCALED_EFB_EXCLUDE_DESCRIPTION);
 #ifdef HAVE_FFMPEG
   AddDescription(m_dump_use_ffv1, TR_USE_FFV1_DESCRIPTION);
 #endif

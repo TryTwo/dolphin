@@ -8,6 +8,8 @@
 
 class GraphicsWindow;
 class QCheckBox;
+class QSlider;
+class QLabel;
 class QComboBox;
 class QSpinBox;
 
@@ -52,6 +54,11 @@ private:
   QCheckBox* m_enable_prog_scan;
   QCheckBox* m_backend_multithreading;
   QCheckBox* m_borderless_fullscreen;
+
+  // EFB exclusions
+  QCheckBox* m_scaled_efb_exclude_enable;
+  QSlider* m_scaled_efb_exclude_slider;
+  QLabel* m_scaled_efb_exclude_label;
 
   // Experimental
   QCheckBox* m_defer_efb_access_invalidation;
