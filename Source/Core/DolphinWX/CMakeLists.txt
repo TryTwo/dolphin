@@ -11,6 +11,7 @@ add_executable(dolphin-emu-wx
   Cheats/CheatsWindow.cpp
   Cheats/CreateCodeDialog.cpp
   Cheats/GeckoCodeDiag.cpp
+	Cheats/GeckoAddEdit.cpp
   Config/AddUSBDeviceDiag.cpp
   Config/AdvancedConfigPane.cpp
   Config/AudioConfigPane.cpp

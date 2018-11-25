@@ -8,6 +8,5 @@ namespace HLE_Misc
 {
 void UnimplementedFunction();
 void HBReload();
-void GeckoCodeHandlerICacheFlush();
 void GeckoReturnTrampoline();
 }

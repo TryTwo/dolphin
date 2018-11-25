@@ -28,28 +28,6 @@ void HBReload()
   Host_Message(HostMessageID::WMUserStop);
 }
 
-void GeckoCodeHandlerICacheFlush()
-{
-  // Work around the codehandler not properly invalidating the icache, but
-  // only the first few frames.
-  // (Project M uses a conditional to only apply patches after something has
-  // been read into memory, or such, so we do the first 5 frames.  More
-  // robust alternative would be to actually detect memory writes, but that
-  // would be even uglier.)
-  u32 gch_gameid = PowerPC::HostRead_U32(Gecko::INSTALLER_BASE_ADDRESS);
-  if (gch_gameid - Gecko::MAGIC_GAMEID == 5)
-  {
-    return;
-  }
-  else if (gch_gameid - Gecko::MAGIC_GAMEID > 5)
-  {
-    gch_gameid = Gecko::MAGIC_GAMEID;
-  }
-  PowerPC::HostWrite_U32(gch_gameid + 1, Gecko::INSTALLER_BASE_ADDRESS);
-
-  PowerPC::ppcState.iCache.Reset();
-}
-
 // Because Dolphin messes around with the CPU state instead of patching the game binary, we
 // need a way to branch into the GCH from an arbitrary PC address. Branching is easy, returning
 // back is the hard part. This HLE function acts as a trampoline that restores the original LR, SP,

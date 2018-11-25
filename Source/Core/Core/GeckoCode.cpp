@@ -121,10 +121,6 @@ static Installation InstallCodeHandlerLocked()
       INSTALLER_BASE_ADDRESS + static_cast<u32>(data.size()) - CODE_SIZE;
   const u32 codelist_end_address = INSTALLER_END_ADDRESS;
 
-  // Write a magic value to 'gameid' (codehandleronly does not actually read this).
-  // This value will be read back and modified over time by HLE_Misc::GeckoCodeHandlerICacheFlush.
-  PowerPC::HostWrite_U32(MAGIC_GAMEID, INSTALLER_BASE_ADDRESS);
-
   // Create GCT in memory
   PowerPC::HostWrite_U32(0x00d0c0de, codelist_base_address);
   PowerPC::HostWrite_U32(0x00d0c0de, codelist_base_address + 4);

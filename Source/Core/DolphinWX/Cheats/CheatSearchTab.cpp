@@ -29,7 +29,7 @@
 #include "DolphinWX/Cheats/CreateCodeDialog.h"
 #include "DolphinWX/WxUtils.h"
 
-static constexpr unsigned int MAX_CHEAT_SEARCH_RESULTS_DISPLAY = 1024;
+static constexpr unsigned int MAX_CHEAT_SEARCH_RESULTS_DISPLAY = 4096;
 
 CheatSearchTab::CheatSearchTab(wxWindow* const parent) : wxPanel(parent)
 {

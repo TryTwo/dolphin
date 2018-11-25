@@ -20,7 +20,11 @@
 #include "Core/GeckoCode.h"
 #include "Core/GeckoCodeConfig.h"
 #include "DolphinWX/Cheats/GeckoCodeDiag.h"
+#include "DolphinWX/Cheats/GeckoAddEdit.h"
 #include "DolphinWX/WxUtils.h"
+#include "UICommon/GameFile.h"
+#include "Common/FileUtil.h"
+#include "Common/IniFile.h"
 
 wxDEFINE_EVENT(DOLPHIN_EVT_GECKOCODE_TOGGLED, wxCommandEvent);
 
@@ -44,7 +48,24 @@ CodeConfigPanel::CodeConfigPanel(wxWindow* const parent) : wxPanel(parent)
   m_infobox.listbox_codes =
       new wxListBox(this, wxID_ANY, wxDefaultPosition, wxDLG_UNIT(this, wxSize(-1, 48)));
 
-  // TODO: buttons to add/edit codes
+  m_modify_buttons = new wxPanel(this);
+  btn_add_code = new wxButton(m_modify_buttons, wxID_ANY, _("&Add New Code..."));
+  m_btn_edit_code = new wxButton(m_modify_buttons, wxID_ANY, _("&Edit Code..."));
+  m_btn_remove_code = new wxButton(m_modify_buttons, wxID_ANY, _("&Remove Code"));
+  btn_download = new wxButton(m_modify_buttons, wxID_ANY, _("Download Codes (WiiRD Database)"));
+  btn_download->Disable();
+  btn_download->Bind(wxEVT_BUTTON, &CodeConfigPanel::DownloadCodes, this);
+  btn_add_code->Bind(wxEVT_BUTTON, &CodeConfigPanel::OnAddNewCodeClick, this);
+  m_btn_edit_code->Bind(wxEVT_BUTTON, &CodeConfigPanel::OnEditCodeClick, this);
+  m_btn_remove_code->Bind(wxEVT_BUTTON, &CodeConfigPanel::OnRemoveCodeClick, this);
+
+  wxBoxSizer* sizer_buttons = new wxBoxSizer(wxHORIZONTAL);
+  sizer_buttons->Add(btn_add_code);
+  sizer_buttons->AddStretchSpacer();
+  sizer_buttons->Add(m_btn_edit_code);
+  sizer_buttons->Add(m_btn_remove_code);
+  sizer_buttons->Add(btn_download);
+  m_modify_buttons->SetSizer(sizer_buttons);
 
   // sizers
   const int space5 = FromDIP(5);
@@ -53,26 +74,22 @@ CodeConfigPanel::CodeConfigPanel(wxWindow* const parent) : wxPanel(parent)
   sizer_infobox->Add(m_infobox.label_creator, 0, wxTOP, space5);
   sizer_infobox->Add(m_infobox.label_notes, 0, wxTOP, space5);
   sizer_infobox->Add(m_infobox.textctrl_notes, 0, wxEXPAND | wxTOP, space5);
-  sizer_infobox->Add(m_infobox.listbox_codes, 1, wxEXPAND | wxTOP, space5);
-
-  // button sizer
-  wxBoxSizer* const sizer_buttons = new wxBoxSizer(wxHORIZONTAL);
-  btn_download = new wxButton(this, wxID_ANY, _("Download Codes (WiiRD Database)"));
-  btn_download->Disable();
-  btn_download->Bind(wxEVT_BUTTON, &CodeConfigPanel::DownloadCodes, this);
-  sizer_buttons->AddStretchSpacer(1);
-  sizer_buttons->Add(WxUtils::GiveMinSizeDIP(btn_download, wxSize(128, -1)), 1, wxEXPAND);
+  sizer_infobox->AddSpacer(space5);
+  sizer_infobox->Add(m_infobox.listbox_codes, 1, wxEXPAND | wxLEFT | wxRIGHT, space5);
+  sizer_infobox->SetMinSize(FromDIP(wxSize(180, -1)));
 
   wxBoxSizer* const sizer_main = new wxBoxSizer(wxVERTICAL);
   sizer_main->AddSpacer(space5);
   sizer_main->Add(m_listbox_gcodes, 1, wxEXPAND | wxLEFT | wxRIGHT, space5);
   sizer_main->AddSpacer(space5);
-  sizer_main->Add(sizer_infobox, 0, wxEXPAND | wxLEFT | wxRIGHT, space5);
-  sizer_main->AddSpacer(space5);
-  sizer_main->Add(sizer_buttons, 0, wxEXPAND | wxLEFT | wxRIGHT, space5);
+  sizer_main->Add(m_modify_buttons, 0, wxEXPAND | wxLEFT | wxRIGHT, space5);
   sizer_main->AddSpacer(space5);
 
-  SetSizerAndFit(sizer_main);
+  wxBoxSizer* panel_layout = new wxBoxSizer(wxHORIZONTAL);
+  panel_layout->Add(sizer_main, 1, wxEXPAND);
+  panel_layout->Add(sizer_infobox, 0, wxEXPAND | wxLEFT, space5);
+
+  SetSizerAndFit(panel_layout);
 }
 
 void CodeConfigPanel::UpdateCodeList(bool checkRunning)
@@ -202,4 +219,63 @@ void CodeConfigPanel::DownloadCodes(wxCommandEvent&)
   // refresh the list
   UpdateCodeList();
 }
+
+void CodeConfigPanel::SaveCodes()
+{
+  IniFile local_ini;
+  local_ini.Load(File::GetUserPath(D_GAMESETTINGS_IDX) + m_gameid + ".ini");
+  Gecko::SaveCodes(local_ini, m_gcodes);
+  local_ini.Save(File::GetUserPath(D_GAMESETTINGS_IDX) + m_gameid + ".ini");
 }
+
+void CodeConfigPanel::OnAddNewCodeClick(wxCommandEvent&)
+{
+  Gecko::GeckoCode code;
+  code.enabled = true;
+
+  GeckoAddEdit editor{{}, this, wxID_ANY, _("Add Gecko Code")};
+  m_editor = &editor;
+  editor.SetGeckoCode(&code);
+
+  if (editor.ShowModal() == wxID_SAVE)
+  {
+    m_gcodes.push_back(std::move(code));
+
+  SaveCodes();
+  UpdateCodeList();
+  }
+
+  m_editor = nullptr;
+}
+
+void CodeConfigPanel::OnEditCodeClick(wxCommandEvent&)
+{
+  int idx = m_listbox_gcodes->GetSelection();
+  wxASSERT(idx != wxNOT_FOUND);
+
+    GeckoAddEdit editor{{}, this, wxID_ANY, _("Duplicate Bundled Gecko Code")};
+    m_editor = &editor;
+    editor.SetGeckoCode(&m_gcodes[idx]);
+
+    if (editor.ShowModal() == wxID_SAVE)
+    {
+      SaveCodes();
+      UpdateCodeList();
+    }
+    m_editor = nullptr;
+    return;
+
+}
+
+void CodeConfigPanel::OnRemoveCodeClick(wxCommandEvent&)
+{
+  int idx = m_listbox_gcodes->GetSelection();
+  wxASSERT(idx != wxNOT_FOUND);
+  m_gcodes.erase(m_gcodes.begin() + idx);
+  m_listbox_gcodes->Delete(idx);
+
+  SaveCodes();
+  UpdateCodeList();
+}
+
+}  // namespace Gecko
