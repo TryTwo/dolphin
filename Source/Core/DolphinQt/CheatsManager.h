@@ -43,17 +43,26 @@ public:
   ~CheatsManager();
 
 private:
+  class Result final
+  {
+  public:
+    Result() : address(0), old_value(0) {}
+    u32 address;
+    u32 old_value;
+  };
+
   QWidget* CreateCheatSearch();
   void CreateWidgets();
   void ConnectWidgets();
   void OnStateChanged(Core::State state);
 
-  size_t GetTypeSize() const;
-  bool MatchesSearch(u32 addr) const;
+  int GetTypeSize() const;
 
   void Reset();
-  void NewSearch();
+  void FilterCheatSearchResults(u32 value, bool prev);
+  void OnNewSearchClicked();
   void NextSearch();
+  u32 SwapValue(u32 value);
   void Update();
   void GenerateARCode();
 
@@ -87,4 +96,6 @@ private:
   QRadioButton* m_match_hexadecimal;
   QRadioButton* m_match_octal;
   bool m_updating = false;
+  int m_search_type_size;
+  bool m_scan_is_initialized = false;
 };
