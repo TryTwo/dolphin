@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <regex>
 
 #include <QApplication>
 #include <QClipboard>
@@ -211,56 +212,20 @@ void CodeViewWidget::ReplaceAddress(u32 address, ReplaceWith replace)
 void CodeViewWidget::OnMemoryViewAddress()
 {
   // Checks if instruction starts with St, L, or psq_l/st and then calculates the save/load address
-  // and places it in memory view. Only works when the register holding the destination at the
-  // breakpoint and at the selection are the same.
+  // and places it in memory view. Only works when the gprs at the PC are the same as the selected
+  // instruction's gpr.
 
-  std::string addr_str;
-  std::string offset_str;
-  u32 roffs = 0;
-  long offs = 0;
   const u32 addy = GetContextAddress();
   std::string codeline = PowerPC::debug_interface.Disassemble(addy);
 
-  if (codeline.compare(0, 2, "st") != 0 && codeline.compare(0, 1, "l") != 0 &&
-      codeline.compare(0, 5, "psq_l") != 0 && codeline.compare(0, 5, "psq_s") != 0)
+  if ((codeline.compare(0, 2, "st") != 0 && codeline.compare(0, 1, "l") != 0 &&
+       codeline.compare(0, 5, "psq_l") != 0 && codeline.compare(0, 5, "psq_s") != 0) ||
+      codeline.compare(0, 2, "li") == 0)
   {
     return;
   }
 
-  offset_str = codeline.substr(codeline.find(" ") + 1);
-  offset_str = offset_str.substr(0, offset_str.find(" "));
-
-  // If there's an X before the first space, it's an instruction like lwzx, where we need to get a
-  // second register value for the offset and format the address string differently.
-  std::string checkx = codeline.substr(0, codeline.find(" "));
-  if (checkx.find("x") != std::string::npos)
-  {
-    addr_str = codeline.substr(codeline.find("r", codeline.find(" ") + 2) + 1);
-    offset_str.erase(0, 1);
-    const int i = stoi(offset_str, nullptr, 10);
-    roffs = GPR(i);
-  }
-  else
-  {
-    if (codeline.find("(") == std::string::npos)
-      return;
-    addr_str = codeline.substr(codeline.find("(") + 2);
-    addr_str = addr_str.substr(0, addr_str.find(")"));
-    offs = std::stoi(offset_str, nullptr, 16);
-  }
-
-  // sp and rtoc need to be converted to 1 and 2. First letter is already removed.
-  if (addr_str.find("p") != std::string::npos)
-    addr_str = std::string("1");
-  if (addr_str.find("toc") != std::string::npos)
-    addr_str = std::string("2");
-
-  // stoi takes a number at the beginning of a string and stops at non-numbers without error, so we
-  // can leave a little trash at the end (psq_lx).
-  const int i = std::stoi(addr_str, nullptr, 10);
-  u32 addr = GPR(i);
-
-  addr = addr + offs + roffs;
+  u32 addr = PowerPC::debug_interface.GetMemoryAddressFromInstruction(codeline);
 
   emit(SendSearchValue(addr));
 }

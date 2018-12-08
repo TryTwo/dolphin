@@ -36,6 +36,9 @@ public:
   void LoadWatchesFromStrings(const std::vector<std::string>& watches) override;
   std::vector<std::string> SaveWatchesToStrings() const override;
   void ClearWatches() override;
+  std::vector<u32> address_trace;
+  std::vector<u32>& GetTracey() { return address_trace; }
+  void ClearTracey() { address_trace.clear(); }
 
   // Memory Patches
   void SetPatch(u32 address, u32 value) override;
@@ -76,6 +79,7 @@ public:
   void RunToBreakpoint() override;
   int GetColor(unsigned int address) override;
   std::string GetDescription(unsigned int address) override;
+  u32 GetMemoryAddressFromInstruction(std::string instruction);
 
   void Clear() override;
 
