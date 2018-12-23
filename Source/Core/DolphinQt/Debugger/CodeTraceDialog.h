@@ -11,79 +11,77 @@
 class CodeWidget;
 class QCheckBox;
 class QLineEdit;
+class QLabel;
 class QComboBox;
 class QListWidget;
 class QListWidgetItem;
 
-struct TCodeTrace
+struct CodeTrace
 {
   u32 address = 0;
   std::string instruction = "";
   std::string reg0 = "";
-  // u32 reg0_val;
   std::string reg1 = "";
-  // u32 reg1_val;
   std::string reg2 = "";
-  // u32 reg2_val;
   u32 memory_dest = 0;
   bool is_store = false;
   bool is_load = false;
   // bool is_fpr = false;
 };
 
-struct TTraceOutput
+struct TraceOutput
 {
   u32 address;
+  u32 mem_addr = 0;
   std::string instruction;
 };
+
+typedef std::pair<std::vector<CodeTrace>::iterator, std::vector<CodeTrace>::iterator>
+    trace_itr_pair;
 
 class CodeTraceDialog : public QDialog
 {
   Q_OBJECT
 public:
   explicit CodeTraceDialog(CodeWidget* parent);
-  ~CodeTraceDialog();
 
   void reject() override;
 
 private:
   void CreateWidgets();
-
-  void TraceCode();
-
-  void IterateForwards();
-
-  void IterateBackwards();
-
   void ConnectWidgets();
-
-  void RunTrace();
+  void ClearAll();
+  void OnRunTrace(bool checked);
+  void SaveInstruction();
+  void ForwardTrace();
+  void Backtrace();
+  void CodePath();
   void DisplayTrace();
-
+  trace_itr_pair UpdateIterator();
   void UpdateBreakpoints();
   void InfoDisp();
 
-  QListWidget* m_trace_output;
+  void OnContextMenu();
+
+  QListWidget* m_output_list;
   QLineEdit* m_trace_target;
   QComboBox* m_bp1;
   QComboBox* m_bp2;
   QCheckBox* m_backtrace;
   QCheckBox* m_verbose;
   QCheckBox* m_clear_on_loop;
-  QPushButton* m_run_trace;
+  QCheckBox* m_change_range;
+  QLabel* m_sizes;
   QPushButton* m_reprocess;
+  QPushButton* m_run_trace;
   CodeWidget* m_parent;
 
-  QLineEdit* m_sizes;
-
-  std::vector<TCodeTrace> CodeTrace;
-  std::vector<TTraceOutput> TraceOutput;
-  std::vector<std::string> RegTrack;
-  std::vector<u32> MemTrack;
-  std::string testtest;
+  std::vector<CodeTrace> m_code_trace;
+  std::vector<TraceOutput> m_trace_out;
+  std::vector<std::string> m_reg;
+  std::vector<u32> m_mem;
   // Make modifiable?
-  const size_t m_max_code_trace = 20000;
-  const size_t m_max_trace_output = 200;
-  QListWidgetItem* m_error_msg;
-  uint pass = 1;
+  const size_t m_max_code_trace = 30000;
+  const size_t m_max_trace = 500;
+  QString m_error_msg;
 };

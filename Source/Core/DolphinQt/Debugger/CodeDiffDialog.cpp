@@ -5,19 +5,20 @@
 #include "DolphinQt/Debugger/CodeDiffDialog.h"
 
 #include <chrono>
-#include <cinttypes>
 #include <regex>
 #include <vector>
 
 #include <QCheckBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMenu>
 #include <QVBoxLayout>
 #include <QtWidgets/QListWidget>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QSpacerItem>
 
 #include "Common/StringUtil.h"
+#include "Core/Core.h"
 #include "Core/Debugger/PPCDebugInterface.h"
 #include "Core/HW/CPU.h"
 #include "Core/PowerPC/JitInterface.h"
@@ -29,411 +30,339 @@
 
 #include "DolphinQt/Debugger/CodeWidget.h"
 
-CodeDiffDialog::CodeDiffDialog(CodeWidget* parent) : QDialog(parent), m_parent(parent)
+CodeDiffDialog::CodeDiffDialog(CodeWidget* parent) : QDialog(parent), m_code_widget(parent)
 {
   setWindowTitle(tr("Diff"));
   CreateWidgets();
   ConnectWidgets();
-  // UpdateBreakpoints();
-  JitInterface::ProfilingState state = JitInterface::ProfilingState::Enabled;
-  JitInterface::SetProfilingState(state);
+  InfoDisp();
+}
+
+void CodeDiffDialog::reject()
+{
+  // Triggered on window close. Make sure to free memory and reset info message.
+  ClearData();
+  InfoDisp();
+  QDialog::reject();
 }
 
 void CodeDiffDialog::CreateWidgets()
 {
-  this->resize(882, 619);
-  auto* btns_layout = new QHBoxLayout;
-  m_exclude_btn = new QPushButton(tr("Code hasn't run"));
-  m_include_btn = new QPushButton(tr("Code has run"));
+  this->resize(500, 700);
+  auto* btns_layout = new QGridLayout;
+  m_exclude_btn = new QPushButton(tr("Code did not get executed"));
+  m_include_btn = new QPushButton(tr("Code has been executed"));
   m_record_btn = new QPushButton(tr("Record functions"));
+  m_record_btn->setCheckable(true);
+  m_record_btn->setStyleSheet(
+      QStringLiteral("QPushButton:checked { background-color: rgb(150, 0, 0); border-style: solid; "
+                     "border-width: 3px; border-color: rgb(150,0,0); color: rgb(255, 255, 255);}"));
 
-  btns_layout->addWidget(m_exclude_btn);
-  btns_layout->addWidget(m_include_btn);
-  btns_layout->addWidget(m_record_btn);
+  btns_layout->addWidget(m_exclude_btn, 0, 0);
+  btns_layout->addWidget(m_include_btn, 0, 1);
+  btns_layout->addWidget(m_record_btn, 0, 2);
 
   auto* labels_layout = new QHBoxLayout;
-  m_exclude_amt = new QLabel(tr("Excluded"));
-  m_current_amt = new QLabel(tr("Current"));
-  m_include_amt = new QLabel(tr("Included"));
+  m_exclude_size_label = new QLabel(tr("Excluded"));
+  m_include_size_label = new QLabel(tr("Included"));
 
-  labels_layout->addWidget(m_exclude_amt);
-  labels_layout->addWidget(m_current_amt);
-  labels_layout->addWidget(m_include_amt);
+  // m_exclude_size_label->setAlignment(Qt::AlignCenter);
+  // m_include_size_label->setAlignment(Qt::AlignCenter);
 
-  m_diff_output = new QListWidget();
-  m_diff_output->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  btns_layout->addWidget(m_exclude_size_label, 1, 0);
+  btns_layout->addWidget(m_include_size_label, 1, 1);
+  // labels_layout->addItem(new QSpacerItem(0,0,QSizePolicy::Minimum, QSizePolicy::Preferred));
+
+  m_output_list = new QListWidget();
+  m_output_list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  m_output_list->setContextMenuPolicy(Qt::CustomContextMenu);
+  m_reset_btn = new QPushButton(tr("Reset All"));
+  m_reset_btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
   auto* layout = new QVBoxLayout();
   layout->addLayout(btns_layout);
   layout->addLayout(labels_layout);
-  layout->addWidget(m_diff_output);
+  layout->addWidget(m_output_list);
+  layout->addWidget(m_reset_btn);
 
   setLayout(layout);
 }
 
 void CodeDiffDialog::ConnectWidgets()
 {
-  connect(m_record_btn, &QPushButton::pressed, this, &CodeDiffDialog::TTest);
+  connect(m_record_btn, &QPushButton::toggled, this, &CodeDiffDialog::OnRecord);
+  connect(m_include_btn, &QPushButton::pressed, [this]() { Update(true); });
+  connect(m_exclude_btn, &QPushButton::pressed, [this]() { Update(false); });
+  connect(m_output_list, &QListWidget::itemClicked, [this](QListWidgetItem* item) {
+    m_code_widget->SetAddress(item->data(Qt::UserRole).toUInt(),
+                              CodeViewWidget::SetAddressUpdate::WithUpdate);
+  });
+  connect(m_reset_btn, &QPushButton::pressed, this, &CodeDiffDialog::ClearData);
+  connect(m_output_list, &CodeDiffDialog::customContextMenuRequested, this,
+          &CodeDiffDialog::OnContextMenu);
+  // maybe only use start addr for blr
+  //    Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(item->data(Qt::UserRole).toUInt());
+  // m_code_widget->SetAddress(symbol->address, CodeViewWidget::SetAddressUpdate::WithUpdate);
+
+  // m_code_widget->SetAddress(item->data(Qt::UserRole).toUInt(),
+  //                      CodeViewWidget::SetAddressUpdate::WithUpdate);
 }
 
-void CodeDiffDialog::TTest()
+void CodeDiffDialog::ClearData()
 {
-  Profiler::ProfileStats prof_stats;
-  JitInterface::ProfilingState state = JitInterface::ProfilingState::Enabled;
-  JitInterface::SetProfilingState(state);
-  JitInterface::GetProfileResults(&prof_stats);
-  for (auto& stat : prof_stats.block_stats)
+  if (m_record_btn->isChecked())
+    m_record_btn->toggle();
+  ClearBlockCache();
+  m_output_list->clear();
+  std::vector<Diff>().swap(m_include);
+  std::vector<Diff>().swap(m_exclude);
+}
+
+void CodeDiffDialog::ClearBlockCache()
+{
+  Core::State old_state = Core::GetState();
+
+  if (old_state == Core::State::Running)
+    Core::SetState(Core::State::Paused);
+
+  JitInterface::ClearCache();
+
+  if (old_state == Core::State::Running)
+    Core::SetState(Core::State::Running);
+}
+
+void CodeDiffDialog::OnRecord(bool enabled)
+{
+  JitInterface::ProfilingState state;
+
+  if (enabled)
   {
-    std::string name = g_symbolDB.GetDescription(stat.addr);
-    new QListWidgetItem(QString::fromStdString(StringFromFormat("%08x\t%s\t%" PRIu64, stat.addr,
-                                                                name.c_str(), stat.run_count)),
-                        m_diff_output);
+    ClearBlockCache();
+    m_record_btn->setText(tr("Recording..."));
+    state = JitInterface::ProfilingState::Enabled;
+  }
+  else
+  {
+    m_record_btn->setText(tr("Start Recording"));
+    state = JitInterface::ProfilingState::Disabled;
+  }
+
+  m_record_btn->update();
+  JitInterface::SetProfilingState(state);
+}
+
+void CodeDiffDialog::OnIncludeExclude(bool include)
+{
+  bool isize = m_include.size() != 0;
+  bool xsize = m_exclude.size() != 0;
+  std::vector<Diff> current_diff;
+  Profiler::ProfileStats prof_stats;
+  auto& blockstats = prof_stats.block_stats;
+  JitInterface::GetProfileResults(&prof_stats);
+  std::vector<Diff> current;
+  current.reserve(20000);
+
+  // Convert blockstats to smaller struct Diff. Exclude repeat functions via symbols.
+  for (auto& iter : blockstats)
+  {
+    Diff tmp_diff;
+    std::string symbol = g_symbolDB.GetDescription(iter.addr);
+    if (!std::any_of(current.begin(), current.end(),
+                     [&symbol](Diff& v) { return v.symbol == symbol; }))
+    {
+      tmp_diff.symbol = symbol;
+      tmp_diff.addr = iter.addr;
+      tmp_diff.hits = iter.run_count;
+      current.push_back(tmp_diff);
+    }
+  }
+
+  // Could add address based difference instead of symbols. Probably need second function.
+  // Sort for lower_bound.
+  sort(current.begin(), current.end(),
+       [](const Diff& v1, const Diff& v2) { return (v1.symbol < v2.symbol); });
+
+  // If both lists are empty, write and skip.
+  if (!isize && !xsize)
+  {
+    if (include)
+      m_include = current;
+    else
+      m_exclude = current;
+    return;
+  }
+
+  // Update exclude list. Compare to exclude list if it exists and make current_diff to check
+  // against include.
+  if (!xsize && !include)
+  {
+    m_exclude = current;
+  }
+  else if (xsize)
+  {
+    for (auto& iter : current)
+    {
+      auto pos = lower_bound(m_exclude.begin(), m_exclude.end(), iter.symbol, AddrOP);
+
+      if (pos->symbol != iter.symbol)
+      {
+        current_diff.push_back(iter);
+
+        if (!include)
+          m_exclude.insert(pos, iter);
+      }
+    }
+    // If there is no include list, we're done.
+    if (!include && !isize)
+      return;
+  }
+  else
+  {
+    current_diff = current;
+  }
+
+  // Update include list.
+  if (include && isize)
+  {
+    // Compare include with current and remove items that aren't in both.
+    std::vector<Diff> tmp_swap;
+    for (auto& iter : m_include)
+    {
+      if (std::any_of(current_diff.begin(), current_diff.end(),
+                      [&](Diff& v) { return v.symbol == iter.symbol; }))
+        tmp_swap.push_back(iter);
+    }
+    m_include.swap(tmp_swap);
+  }
+  else if ((!isize && include) || (!xsize && !include))
+  {
+    // If both lists are about to be filled for the first time, compare full lists and remove from
+    // include list.
+    if (include)
+      m_include = current;
+
+    for (auto& list : m_exclude)
+    {
+      m_include.erase(std::remove_if(m_include.begin(), m_include.end(),
+                                     [&](Diff const& v) { return v.symbol == list.symbol; }),
+                      m_include.end());
+    }
+  }
+  else
+  {
+    // If exclude pressed, remove new exclude items from include list that match.
+    for (auto& list : current_diff)
+    {
+      m_include.erase(std::remove_if(m_include.begin(), m_include.end(),
+                                     [&](Diff& v) { return v.symbol == list.symbol; }),
+                      m_include.end());
+    }
   }
 }
-//
-// void CodeDiffDialog::ConnectWidgets()
-//{
-//  connect(m_parent, &CodeWidget::BreakpointsChanged, this, &CodeDiffDialog::UpdateBreakpoints);
-//  connect(m_run_Diff, &QPushButton::pressed, this, &CodeDiffDialog::RunDiff);
-//  connect(m_reprocess, &QPushButton::pressed, this, &CodeDiffDialog::DisplayDiff);
-//}
-//
-// void CodeDiffDialog::RunDiff()
-//{
-//  CodeDiff.clear();
-//
-//  u32 start_bp;
-//  u32 end_bp;
-//
-//  if (!CPU::IsStepping())
-//    return;
-//
-//  CPU::PauseAndLock(true, false);
-//  PowerPC::breakpoints.ClearAllTemporary();
-//
-//  // Keep stepping until the next return instruction or timeout after five seconds
-//  using clock = std::chrono::steady_clock;
-//  clock::time_point timeout = clock::now() + std::chrono::seconds(5);
-//  PowerPC::CoreMode old_mode = PowerPC::GetMode();
-//  PowerPC::SetMode(PowerPC::CoreMode::Interpreter);
-//
-//  //// test bad values
-//  // if (m_bp1->currentIndex() == -1)
-//  //  start_bp = m_bp1->currentText().toUInt();
-//  // else
-//  //  start_bp = m_bp1->currentData().toUInt();
-//
-//  // if (m_bp2->currentIndex() == -1)
-//  //  end_bp = m_bp2->currentText().toUInt();
-//  // else
-//  //  end_bp = m_bp2->currentData().toUInt();
-//  start_bp = m_bp1->currentData().toUInt();
-//  end_bp = m_bp2->currentData().toUInt();
-//  // Loop until either the current instruction is a return instruction with no Link flag
-//  // or a breakpoint is detected so it can step at the breakpoint. If the PC is currently
-//  // on a breakpoint, skip it.
-//  UGeckoInstruction inst = PowerPC::HostRead_Instruction(PC);
-//  do
-//  {
-//    DiffCode();
-//    PowerPC::SingleStep();
-//
-//    if (PC == start_bp && m_clear_on_loop->isChecked())
-//      CodeDiff.clear();
-//
-//  } while (clock::now() < timeout && !PowerPC::breakpoints.IsAddressBreakPoint(PC) &&
-//           CodeDiff.size() <= 20000);
-//
-//  // const Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(m_code_view->GetAddress());
-//  PowerPC::SetMode(old_mode);
-//  CPU::PauseAndLock(false, false);
-//
-//  // Check if needed
-//  emit Host::GetInstance()->UpdateDisasmDialog();
-//
-//  CodeDiffDialog::DisplayDiff();
-//  // if (PowerPC::breakpoints.IsAddressBreakPoint(PC))
-//  //  Core::DisplayMessage(tr("Breakpoint encountered! Step out aborted.").toStdString(), 2000);
-//  // else if (clock::now() >= timeout)
-//  //  Core::DisplayMessage(tr("Step out timed out!").toStdString(), 2000);
-//  // else
-//  //  Core::DisplayMessage(tr("Step out successful!").toStdString(), 2000);
-//  // auto* item = new QListWidgetItem(tr("Diff timed out, stopped before end breakpoint"));
-//  // auto* item = new QListWidgetItem(tr("Max Diff size reached, stopped before end breakpoint"));
-//  // m_Diff_output->addltem(item);
-//}
-//
-// void CodeDiffDialog::DiffCode()
-//{
-//  if (CodeDiff.size() >= 10000)
-//    return;
-//  TCodeDiff tmp_Diff;
-//  std::string tmp = PowerPC::debug_interface.Disassemble(PC);
-//  std::regex replace_sp("\\W(sp)");
-//  std::regex replace_rtoc("(rtoc)");
-//  tmp = std::regex_replace(tmp, replace_sp, "r1");
-//  tmp = std::regex_replace(tmp, replace_sp, "r2");
-//  tmp_Diff.instruction = tmp;
-//  tmp_Diff.address = PC;
-//
-//  // Pull all register numbers out and store them.
-//  std::regex reg("([rfp]\\d+)[^r^f]*(?:([rf]\\d+))?[^r^f\\D]*(?:([rf]\\d+))?");
-//  std::smatch match;
-//
-//  if (std::regex_search(tmp, match, reg))
-//  {
-//    tmp_Diff.reg0 = match.str(1);
-//    if (match[2].matched)
-//      tmp_Diff.reg1 = match.str(2);
-//    if (match[3].matched)
-//      tmp_Diff.reg2 = match.str(3);
-//
-//    if (match.str(1) != "r")
-//      tmp_Diff.is_fpr = true;
-//
-//    // Get Memory Destination if load/store.
-//    if (tmp.compare(0, 2, "st") == 0 || tmp.compare(0, 5, "psq_s") == 0)
-//    {
-//      tmp_Diff.memory_dest = PowerPC::debug_interface.GetMemoryAddressFromInstruction(tmp);
-//      tmp_Diff.is_store = true;
-//    }
-//    else if ((tmp.compare(0, 1, "l") == 0 && tmp.compare(1, 1, "i") != 0) ||
-//             tmp.compare(0, 5, "psq_l") == 0)
-//    {
-//      tmp_Diff.memory_dest = PowerPC::debug_interface.GetMemoryAddressFromInstruction(tmp);
-//      tmp_Diff.is_load = true;
-//    }
-//  }
-//
-//  CodeDiff.push_back(tmp_Diff);
-//}
-//
-// void CodeDiffDialog::IterateForwards()
-//{
-//  std::vector<std::string> exclude = {"dc", "ic", "mt", "c"};
-//  TDiffOutput tempout;
-//  tempout.instruction;
-//  for (auto instr = CodeDiff.begin(); instr != CodeDiff.end(); instr--)
-//  {
-//    // Not an instruction we care about.
-//    if (instr->reg0.empty())
-//      continue;
-//
-//    // test instr reg2 empty
-//    auto itR = std::find(RegTrack.begin(), RegTrack.end(), instr->reg0);
-//    auto itM = std::find(MemTrack.begin(), MemTrack.end(), instr->memory_dest);
-//    const bool match_reg12 =
-//        (std::find(RegTrack.begin(), RegTrack.end(), instr->reg1) != RegTrack.end() ||
-//         std::find(RegTrack.begin(), RegTrack.end(), instr->reg2) != RegTrack.end());
-//    const bool match_reg0 = (itR != RegTrack.end());
-//
-//    int test;
-//    if (*itM == 0)
-//      test = 1;
-//    if (m_verbose->isChecked() && (match_reg12 || match_reg0 || itM != MemTrack.end()))
-//    {
-//      tempout.instruction = instr->instruction;
-//      tempout.address = instr->address;
-//      DiffOutput.push_back(tempout);
-//    }
-//    // or goto
-//    bool cont = false;
-//
-//    for (auto& s : exclude)
-//    {
-//      if (instr->instruction.compare(0, s.length(), s) == 0)
-//        cont = true;
-//    }
-//
-//    if (cont)
-//      continue;
-//
-//    // Save/Load
-//    if (instr->memory_dest)
-//    {
-//      // If using tracked memory. Add register to tracked if Load. Remove tracked memory if
-//      // pverwrotten.
-//      if (itM != MemTrack.end())
-//      {
-//        if (instr->is_load && !match_reg0)
-//          RegTrack.push_back(instr->reg0);
-//        else if (instr->is_store && !match_reg0)
-//          MemTrack.erase(itM);
-//      }
-//      else if (instr->is_store && match_reg0)
-//      {
-//        // If load/store but not using tracked memory & if storing tracked register, track memory
-//        // location too.
-//        MemTrack.push_back(instr->memory_dest);
-//      }
-//    }
-//    else
-//    {
-//      // Other instructions
-//      // Skip if no matches. Happens most often.
-//      if (!match_reg0 && !match_reg12)
-//        continue;
-//      // If tracked register data is being stored in a new register, save new register.
-//      else if (match_reg12 && !match_reg0)
-//        RegTrack.push_back(instr->reg0);
-//      // If tracked register is overwritten, stop tracking.
-//      else if (match_reg0 && !match_reg12)
-//        RegTrack.erase(itR);
-//    }
-//
-//    if ((RegTrack.empty() && MemTrack.empty()) || DiffOutput.size() > 200)
-//      break;
-//  }
-//}
-//
-// void CodeDiffDialog::IterateBackwards()
-//{
-//  std::vector<std::string> exclude = {"dc", "ic", "mt", "c"};  // mf
-//  pass = 1;
-//  TDiffOutput tempout;
-//
-//  for (auto instr = CodeDiff.end(); instr != CodeDiff.begin(); instr--)
-//  {
-//    // Not an instruction we care about
-//    testtest = instr->instruction;
-//    pass++;
-//
-//    if (instr->reg0.empty())
-//      continue;
-//
-//    auto itR = std::find(RegTrack.begin(), RegTrack.end(), instr->reg0);
-//    auto itM = std::find(MemTrack.begin(), MemTrack.end(), instr->memory_dest);
-//    const bool match_reg1 =
-//        std::find(RegTrack.begin(), RegTrack.end(), instr->reg1) != RegTrack.end();
-//    const bool match_reg2 =
-//        std::find(RegTrack.begin(), RegTrack.end(), instr->reg2) != RegTrack.end();
-//    const bool match_reg0 = (itR != RegTrack.end());
-//
-//    // Output stuff like compares if they contain a tracked register
-//    if (m_verbose && (match_reg1 || match_reg2 || match_reg0 || itM != MemTrack.end()))
-//    {
-//      tempout.instruction = instr->instruction;
-//      tempout.address = instr->address;
-//      DiffOutput.push_back(tempout);
-//    }
-//
-//    // or goto
-//
-//    // Exclude a few instruction types, such as compare
-//    bool cont = false;
-//    for (auto& s : exclude)
-//    {
-//      if (instr->instruction.compare(0, s.length(), s) == 0)
-//        cont = true;
-//    }
-//
-//    if (cont)
-//      continue;
-//
-//    // Save/Load
-//    if (instr->memory_dest)
-//    {
-//      // BackDiff: what wrote to tracked Memory & remove memory track. Load doesn't point to where
-//      // it came from. Else if: what loaded to tracked register & remove register from track.
-//      if (itM != MemTrack.end())
-//      {
-//        // if (instr->is_load && !match_reg0)
-//        //  sidenote;
-//        if (instr->is_store && !match_reg0)
-//          RegTrack.push_back(instr->reg0);
-//      }
-//      else if (instr->is_load && match_reg0)
-//      {
-//        MemTrack.push_back(instr->memory_dest);
-//        RegTrack.erase(itR);
-//      }
-//    }
-//    else
-//    {
-//      // Other instructions
-//      // Skip if we aren't watching output register. Happens most often.
-//      // Else: Erase tracked register and save what wrote to it.
-//      if (!match_reg0)
-//        continue;
-//      else if (!match_reg1 && !match_reg2)
-//        RegTrack.erase(itR);
-//
-//      // If tracked register is written, track r1 / r2.
-//      if (!match_reg1 && !instr->reg1.empty())
-//        RegTrack.push_back(instr->reg1);
-//      if (!match_reg2 && !instr->reg2.empty())
-//        RegTrack.push_back(instr->reg2);
-//    }
-//
-//    // Stop if we run out of things to track
-//    if ((RegTrack.empty() && MemTrack.empty()) || DiffOutput.size() > 200)
-//      break;
-//  }
-//}
-//
-// void CodeDiffDialog::DisplayDiff()
-//{
-//  DiffOutput.clear();
-//  RegTrack.clear();
-//  MemTrack.clear();
-//  m_Diff_output->clear();
-//
-//  // DO account for memory values and SP/RTOC
-//  RegTrack.push_back(m_Diff_target->text().toStdString());
-//
-//  // Add BP changes to change codeDiff substr?
-//  if (m_backDiff->isChecked())
-//    IterateBackwards();
-//  else
-//    IterateForwards();
-//
-//  // m_sizes->setPlaceholderText(QString::number(CodeDiff.size()) +
-//  //                            QStringLiteral("  Output:  ") +
-//  //                            QString::number(DiffOutput.size()));
-//
-//  m_sizes->setPlaceholderText(QStringLiteral("Diff: %1, Proc: %2")
-//                                  .arg(QString::number(CodeDiff.size()))
-//                                  .arg(QString::number(DiffOutput.size())));
-//
-//  auto* item =
-//      new QListWidgetItem(QStringLiteral("This is a ts test est test etst etst\nTestestestestes "
-//                                         "test\ntesteste testest \n testestest"));
-//  m_Diff_output->addItem(item);
-//
-//  for (auto out = DiffOutput.begin(); out != DiffOutput.end(); out++)
-//  {
-//    auto* item2 = new QListWidgetItem(QString::fromStdString(
-//        StringFromFormat("%08x : %s", out->address, out->instruction.c_str())));
-//    m_Diff_output->addItem(item2);
-//  }
-//}
-//
-// void CodeDiffDialog::UpdateBreakpoints()
-//{
-//  // May need better method of clear
-//  m_bp1->clear();
-//  m_bp2->clear();
-//
-//  auto bp_vec = PowerPC::breakpoints.GetBreakPoints();
-//
-//  for (auto& i : bp_vec)
-//  {
-//    std::string instr = PowerPC::debug_interface.Disassemble(i.address);
-//    m_bp1->addItem(QStringLiteral("%1 : %2")
-//                       .arg(i.address, 8, 16, QLatin1Char('0'))
-//                       .arg(QString::fromStdString(instr)),
-//                   i.address);
-//    m_bp2->addItem(QStringLiteral("%1 : %2")
-//                       .arg(i.address, 8, 16, QLatin1Char('0'))
-//                       .arg(QString::fromStdString(instr)),
-//                   i.address);
-//  }
-//
-//  m_bp2->setCurrentIndex(1);
-//  m_bp1->setEditText(QStringLiteral("PC: %1").arg(PC, 8, 16, QLatin1Char('0')));
-//  m_bp1->setItemData(-1, PC);
-//}
 
-void ConnectWidgets()
+void CodeDiffDialog::Update(bool include)
 {
+  // Wrap everything in a pause
+  Core::State old_state = Core::GetState();
+  if (old_state == Core::State::Running)
+    Core::SetState(Core::State::Paused);
+
+  // Main process
+  OnIncludeExclude(include);
+
+  m_output_list->clear();
+
+  new QListWidgetItem(tr("Address\tHits\tSymbol"), m_output_list);
+
+  for (auto& iter : m_include)
+  {
+    QString fix_sym = QString::fromStdString(iter.symbol);
+    fix_sym.replace(QStringLiteral("\t"), QStringLiteral("  "));
+
+    QString tmp_out =
+        QString::fromStdString(StringFromFormat("%08x\t%i\t", iter.addr, iter.hits)) + fix_sym;
+
+    auto* item = new QListWidgetItem(tmp_out, m_output_list);
+    item->setData(Qt::UserRole, iter.addr);
+
+    m_output_list->addItem(item);
+  }
+  m_exclude_size_label->setText(QString::number(m_exclude.size()));
+  m_include_size_label->setText(QString::number(m_include.size()));
+
+  JitInterface::ClearCache();
+  if (old_state == Core::State::Running)
+    Core::SetState(Core::State::Running);
 }
+
+void CodeDiffDialog::InfoDisp()
+{
+  new QListWidgetItem(
+      QStringLiteral(
+          "Used to find functions based on when they should be running.\n\nRecord Functions: will "
+          "keep track of what functions run. Stop and restart to reset current "
+          "recording.\nExclude: will add recorded functions to an excluded "
+          "list, then reset the recording list.\nInclude: will add"
+          "recorded function to an include list, then reset the recording list.\nAfter you use "
+          "both "
+          "exclude and include once, the "
+          "exclude list will be subtracted\n   from the include list and any includes left over "
+          "will "
+          "be displayed.\nYou can continue to use include/exclude to narrow down the "
+          "results.\n\nExample: "
+          "You want to find a function that runs when HP is modified.\n1.  Start recording and "
+          "play "
+          "the game without letting HP be modified, then press exclude.\n2.  Immediately "
+          "gain/lose HP and hit include.\n3.  Repeat 1 or 2 to narrow down the results.\nIncludes "
+          "should "
+          "have short recordings focusing on what you want.\nAlso note, pressing include multiple "
+          "times will never increase the include list's size.\n   Pressing include twice will only "
+          "keep functions that ran for both recordings."),
+      m_output_list);
+}
+
+void CodeDiffDialog::OnContextMenu()
+{
+  QMenu* menu = new QMenu(this);
+  menu->addAction(tr("&Delete"), this, &CodeDiffDialog::Delete);
+  menu->addAction(tr("Toggle &blr"), this, &CodeDiffDialog::OnToggleBLR);
+  menu->exec(QCursor::pos());
+}
+
+void CodeDiffDialog::Delete()
+{
+  // Delete from include and listwidget.
+  int remove_item = m_output_list->row(m_output_list->currentItem());
+  m_include.erase(m_include.begin() + remove_item - 1);
+  m_output_list->takeItem(remove_item);
+
+  // If multiple selections enabled, try:
+  // qDeleteAll(m_output_list->selectedItems());
+}
+
+void CodeDiffDialog::OnToggleBLR()
+{
+  // Get address at top of function (hopefully) and blr it.
+  auto item = m_output_list->currentItem();
+  Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(item->data(Qt::UserRole).toUInt());
+
+  PowerPC::debug_interface.UnsetPatch(symbol->address);
+
+  if (PowerPC::HostRead_U32(symbol->address) != 0x4e800020)
+  {
+    PowerPC::debug_interface.SetPatch(symbol->address, 0x4e800020);
+    item->setForeground(QBrush(Qt::red));
+    m_code_widget->Update();
+  }
+  else
+  {
+    item->setForeground(QBrush(Qt::black));
+  }
+}
+// compare names/symbols
+// Questions: Use ClearCache or ClearSafe?
+// Check const w/ lambda
+// go to function, not address, so it goes to first address
+
+// set BP button on code page to equal row height
+// code address search on focus go to address

@@ -1158,22 +1158,22 @@ void GekkoDisassembler::ps(u32 inst)
   }
   case 528:
     m_opcode = "ps_merge00";
-    m_operands = StringFromFormat("p%u, p%u[0],p%u[0]", FD, FA, FB);
+    m_operands = StringFromFormat("p%u, p%u[0], p%u[0]", FD, FA, FB);
     return;
 
   case 560:
     m_opcode = "ps_merge01";
-    m_operands = StringFromFormat("p%u, p%u[0],p%u[1]", FD, FA, FB);
+    m_operands = StringFromFormat("p%u, p%u[0], p%u[1]", FD, FA, FB);
     return;
 
   case 592:
     m_opcode = "ps_merge10";
-    m_operands = StringFromFormat("p%u, p%u[1],p%u[0]", FD, FA, FB);
+    m_operands = StringFromFormat("p%u, p%u[1], p%u[0]", FD, FA, FB);
     return;
 
   case 624:
     m_opcode = "ps_merge11";
-    m_operands = StringFromFormat("p%u, p%u[1],p%u[1]", FD, FA, FB);
+    m_operands = StringFromFormat("p%u, p%u[1], p%u[1]", FD, FA, FB);
     return;
 
   case 1014:

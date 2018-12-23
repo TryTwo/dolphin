@@ -224,7 +224,7 @@ void MemoryViewWidget::Update()
   }
 
   // Clearly denote which row the address box points to. Could look better than this.
-  item(20, 0)->setBackground(Qt::lightGray);
+  item(rows / 2, 0)->setBackground(Qt::lightGray);
 
   viewport()->update();
   update();

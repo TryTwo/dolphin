@@ -89,6 +89,13 @@ void CodeViewWidget::Update()
 
   m_updating = true;
 
+  // Set fixed column width for param based on max possible size. Set tighter row height.
+  QFontMetrics fm(Settings::Instance().GetDebugFont());
+  const int fontw = fm.width(QStringLiteral("r20, r20, 20, 30, 30 (00000000)"));
+  setColumnWidth(3, fontw);
+  const int fonth = fm.height() + 1;
+  verticalHeader()->setMaximumSectionSize(fonth);
+
   clearSelection();
   if (rowCount() == 0)
     setRowCount(1);
@@ -99,7 +106,7 @@ void CodeViewWidget::Update()
   setRowCount(rows);
 
   for (int i = 0; i < rows; i++)
-    setRowHeight(i, 24);
+    setRowHeight(i, fonth);
 
   u32 pc = PowerPC::ppcState.pc;
 
@@ -178,7 +185,6 @@ void CodeViewWidget::Update()
     }
   }
 
-  resizeColumnsToContents();
   setColumnWidth(0, 24 + 5);
 
   g_symbolDB.FillInCallers();

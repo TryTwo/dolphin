@@ -7,53 +7,59 @@
 #include <QDialog>
 
 #include "Common/CommonTypes.h"
+#include "Core/PowerPC/Profiler.h"
 
 class CodeWidget;
 class QCheckBox;
 class QLabel;
 class QListWidget;
 
-namespace Profiler
+struct Diff
 {
-struct ProfileStats;
-}
+  u32 addr;
+  std::string symbol;
+  u32 hits;
+};
 
 class CodeDiffDialog : public QDialog
 {
   Q_OBJECT
+
+  struct _AddrOp
+  {
+    bool operator()(const Diff& iter, const std::string& val) const { return iter.symbol < val; }
+  } AddrOP;
+
 public:
   explicit CodeDiffDialog(CodeWidget* parent);
+  void reject() override;
 
 private:
   void CreateWidgets();
   void ConnectWidgets();
+  void ClearData();
+  void ClearBlockCache();
+  void OnRecord(bool enabled);
+  void OnIncludeExclude(bool include);
+  void Update(bool include);
+  void InfoDisp();
 
-  void TTest();
+  void OnContextMenu();
 
-  // void TraceCode();
+  void Delete();
 
-  // void IterateForwards();
+  void OnToggleBLR();
 
-  // void IterateBackwards();
-
-  // void RunTrace();
-  // void DisplayTrace();
-
-  // void UpdateBreakpoints();
-
-  QListWidget* m_diff_output;
-  QLabel* m_exclude_amt;
-  QLabel* m_current_amt;
-  QLabel* m_include_amt;
+  QListWidget* m_output_list;
+  QLabel* m_exclude_size_label;
+  QLabel* m_current_size_label;
+  QLabel* m_include_size_label;
   QPushButton* m_exclude_btn;
   QPushButton* m_include_btn;
   QPushButton* m_record_btn;
-  CodeWidget* m_parent;
+  QPushButton* m_reset_btn;
+  CodeWidget* m_code_widget;
 
-  QLabel* m_sizes;
-
-  std::vector<std::string> RegTrack;
-  std::vector<u32> MemTrack;
-  std::string testtest;
-  unsigned int pass = 1;
+  std::vector<Diff> m_exclude;
+  std::vector<Diff> m_include;
 };

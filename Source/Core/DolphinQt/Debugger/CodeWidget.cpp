@@ -159,6 +159,8 @@ void CodeWidget::CreateWidgets()
 void CodeWidget::ConnectWidgets()
 {
   connect(m_search_address, &QLineEdit::textChanged, this, &CodeWidget::OnSearchAddress);
+  // connect(m_search_address, &QLineEdit::cursorPositionChanged, this,
+  // &CodeWidget::OnSearchAddress);
   connect(m_search_symbols, &QLineEdit::textChanged, this, &CodeWidget::OnSearchSymbols);
   connect(m_code_trace, &QPushButton::pressed, this, &CodeWidget::OnTrace);
   connect(m_code_diff, &QPushButton::pressed, this, &CodeWidget::OnDiff);
@@ -171,15 +173,12 @@ void CodeWidget::ConnectWidgets()
           &CodeWidget::OnSelectFunctionCallers);
 
   connect(m_code_view, &CodeViewWidget::SymbolsChanged, this, &CodeWidget::UpdateSymbols);
-  // connect(m_code_View, &CodeViewWidget::BreakpointsChanged, this,
-  //      &CodeTraceDialog::UpdateBreakpoints);
   connect(m_code_view, &CodeViewWidget::BreakpointsChanged, this,
           [this] { emit BreakpointsChanged(); });
   connect(m_code_view, &CodeViewWidget::SendSearchValue, this,
           [this](u32 addr) { emit SendSearchValue(addr); });
   connect(m_code_view, &CodeViewWidget::RequestPPCComparison, this,
           &CodeWidget::RequestPPCComparison);
-  trace_dialog = NULL;
 }
 
 void CodeWidget::OnTrace()
@@ -194,11 +193,12 @@ void CodeWidget::OnTrace()
 
 void CodeWidget::OnDiff()
 {
-  CodeDiffDialog* diff_dialog = new CodeDiffDialog(this);
+  if (!diff_dialog)
+    diff_dialog = new CodeDiffDialog(this);
   diff_dialog->setWindowFlag(Qt::WindowMinimizeButtonHint);
-  diff_dialog->setModal(false);
   diff_dialog->show();
   diff_dialog->raise();
+  diff_dialog->activateWindow();
 }
 
 void CodeWidget::OnSearchAddress()

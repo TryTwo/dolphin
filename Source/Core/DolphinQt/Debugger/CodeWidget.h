@@ -8,6 +8,7 @@
 #include <QString>
 
 #include "Common/CommonTypes.h"
+#include "DolphinQt/Debugger/CodeDiffDialog.h"
 #include "DolphinQt/Debugger/CodeTraceDialog.h"
 #include "DolphinQt/Debugger/CodeViewWidget.h"
 
@@ -67,8 +68,8 @@ private:
 
   void closeEvent(QCloseEvent*) override;
 
-  CodeTraceDialog* trace_dialog;
-  // QDialog* diff_dialog;
+  CodeTraceDialog* trace_dialog = NULL;
+  CodeDiffDialog* diff_dialog = NULL;
   QLineEdit* m_search_address;
   QLineEdit* m_search_symbols;
   QPushButton* m_code_trace;
