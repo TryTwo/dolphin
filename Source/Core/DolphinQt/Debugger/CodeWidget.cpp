@@ -10,6 +10,7 @@
 #include <QGroupBox>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPushButton>
 #include <QSplitter>
 #include <QTableWidget>
 #include <QWidget>
@@ -96,6 +97,8 @@ void CodeWidget::CreateWidgets()
 
   m_search_address = new QLineEdit;
   m_search_symbols = new QLineEdit;
+  m_code_trace = new QPushButton(tr("Trace"));
+  m_code_diff = new QPushButton(tr("Diff"));
   m_code_view = new CodeViewWidget;
 
   m_search_address->setPlaceholderText(tr("Search Address"));
@@ -147,6 +150,8 @@ void CodeWidget::CreateWidgets()
 
   layout->addWidget(m_search_address, 0, 0);
   layout->addWidget(m_search_symbols, 0, 1);
+  layout->addWidget(m_code_trace, 0, 2);
+  layout->addWidget(m_code_diff, 0, 3);
   layout->addWidget(m_code_splitter, 1, 0, -1, -1);
 
   QWidget* widget = new QWidget(this);
@@ -159,12 +164,14 @@ void CodeWidget::ConnectWidgets()
   connect(m_search_address, &QLineEdit::textChanged, this, &CodeWidget::OnSearchAddress);
   connect(m_search_address, &QLineEdit::returnPressed, this, &CodeWidget::OnSearchAddress);
   connect(m_search_symbols, &QLineEdit::textChanged, this, &CodeWidget::OnSearchSymbols);
-
-  connect(m_symbols_list, &QListWidget::itemPressed, this, &CodeWidget::OnSelectSymbol);
-  connect(m_callstack_list, &QListWidget::itemPressed, this, &CodeWidget::OnSelectCallstack);
-  connect(m_function_calls_list, &QListWidget::itemPressed, this,
+  connect(m_code_trace, &QPushButton::pressed, this, &CodeWidget::OnTrace);
+  connect(m_code_diff, &QPushButton::pressed, this, &CodeWidget::OnDiff);
+  connect(m_symbols_list, &QListWidget::itemClicked, this, &CodeWidget::OnSelectSymbol);
+  connect(m_callstack_list, &QListWidget::itemClicked, this,
+          &CodeWidget::OnSelectCallstack);
+  connect(m_function_calls_list, &QListWidget::itemClicked, this,
           &CodeWidget::OnSelectFunctionCalls);
-  connect(m_function_callers_list, &QListWidget::itemPressed, this,
+  connect(m_function_callers_list, &QListWidget::itemClicked, this,
           &CodeWidget::OnSelectFunctionCallers);
 
   connect(m_code_view, &CodeViewWidget::SymbolsChanged, this, &CodeWidget::UpdateSymbols);
@@ -174,6 +181,26 @@ void CodeWidget::ConnectWidgets()
   connect(m_code_view, &CodeViewWidget::RequestPPCComparison, this,
           &CodeWidget::RequestPPCComparison);
   connect(m_code_view, &CodeViewWidget::ShowMemory, this, &CodeWidget::ShowMemory);
+}
+
+void CodeWidget::OnTrace()
+{
+  if (!trace_dialog)
+    trace_dialog = new CodeTraceDialog(this);
+  trace_dialog->setWindowFlag(Qt::WindowMinimizeButtonHint);
+  trace_dialog->show();
+  trace_dialog->raise();
+  trace_dialog->activateWindow();
+}
+
+void CodeWidget::OnDiff()
+{
+  if (!diff_dialog)
+    diff_dialog = new CodeDiffDialog(this);
+  diff_dialog->setWindowFlag(Qt::WindowMinimizeButtonHint);
+  diff_dialog->show();
+  diff_dialog->raise();
+  diff_dialog->activateWindow();
 }
 
 void CodeWidget::OnSearchAddress()
