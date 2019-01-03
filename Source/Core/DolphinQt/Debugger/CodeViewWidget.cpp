@@ -142,6 +142,7 @@ CodeViewWidget::CodeViewWidget()
   setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
 
+  horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
   verticalHeader()->hide();
   horizontalHeader()->setSectionResizeMode(CODE_VIEW_COLUMN_BREAKPOINT, QHeaderView::Fixed);
   horizontalHeader()->setStretchLastSection(true);

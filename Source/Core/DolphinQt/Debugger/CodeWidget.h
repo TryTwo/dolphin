@@ -68,6 +68,7 @@ private:
 
   void closeEvent(QCloseEvent*) override;
   void showEvent(QShowEvent* event) override;
+  bool eventFilter(QObject* obj, QEvent* event);
 
   CodeTraceDialog* trace_dialog = nullptr;
   CodeDiffDialog* diff_dialog = nullptr;
