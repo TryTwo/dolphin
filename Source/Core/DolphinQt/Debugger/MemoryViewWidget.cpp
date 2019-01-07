@@ -36,11 +36,6 @@ MemoryViewWidget::MemoryViewWidget(QWidget* parent) : QTableWidget(parent)
   setAlternatingRowColors(true);
 
   setFont(Settings::Instance().GetDebugFont());
-  QFontMetrics fm(Settings::Instance().GetDebugFont());
-
-  // Row height as function of text size. Less height than default.
-  const int rowh = fm.height() + 3;
-  verticalHeader()->setMaximumSectionSize(rowh);
 
   connect(&Settings::Instance(), &Settings::DebugFontChanged, this, &QWidget::setFont);
   connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, [this] { Update(); });
@@ -54,6 +49,7 @@ MemoryViewWidget::MemoryViewWidget(QWidget* parent) : QTableWidget(parent)
       Update();
   });
 
+  connect(&Settings::Instance(), &Settings::DebugFontChanged, this, &MemoryViewWidget::Update);
   setContextMenuPolicy(Qt::CustomContextMenu);
 
   Update();
@@ -88,10 +84,10 @@ void MemoryViewWidget::Update()
   if (rowCount() == 0)
     setRowCount(1);
 
-  QFontMetrics fm(Settings::Instance().GetDebugFont());
-  const int rowh = fm.height() + 3;
-
-  setRowHeight(0, rowh);
+  const QFontMetrics fm(Settings::Instance().GetDebugFont());
+  const int fonth = fm.height();
+  verticalHeader()->setDefaultSectionSize(fonth + 3);
+  horizontalHeader()->setMinimumSectionSize(fonth + 3);
 
   // Calculate (roughly) how many rows will fit in our table
   int rows = std::round((height() / static_cast<float>(rowHeight(0))) - 0.25);
@@ -102,8 +98,6 @@ void MemoryViewWidget::Update()
 
   for (int i = 0; i < rows; i++)
   {
-    setRowHeight(i, rowh);
-
     // Two column mode has rows increment by 0x4 instead of 0x10
     u32 rowmod = ((GetColumnCount(m_type) == 2) ? 4 : 16);
     u32 addr = m_address - (rowCount() / 2) * rowmod + i * rowmod;
@@ -237,11 +231,12 @@ void MemoryViewWidget::Update()
     {
       bp_item->setData(
           Qt::DecorationRole,
-          Resources::GetScaledThemeIcon("debugger_breakpoint").pixmap(QSize(rowh, rowh)));
+          Resources::GetScaledThemeIcon("debugger_breakpoint").pixmap(QSize(fonth - 2, fonth - 2)));
     }
   }
 
-  setColumnWidth(0, rowh + 5);
+  setColumnWidth(0, fonth + 3);
+
   for (int i = 1; i < columnCount(); i++)
   {
     resizeColumnToContents(i);
