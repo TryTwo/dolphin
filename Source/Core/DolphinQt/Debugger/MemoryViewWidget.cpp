@@ -35,22 +35,20 @@ MemoryViewWidget::MemoryViewWidget(QWidget* parent) : QTableWidget(parent)
   setAlternatingRowColors(true);
 
   setFont(Settings::Instance().GetDebugFont());
-  QFontMetrics fm(Settings::Instance().GetDebugFont());
-
-  // Row height as function of text size. Less height than default.
-  const int fonth = fm.height() + 3;
-  verticalHeader()->setMaximumSectionSize(fonth);
 
   connect(&Settings::Instance(), &Settings::DebugFontChanged, this, &QWidget::setFont);
   connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, [this] { Update(); });
   connect(this, &MemoryViewWidget::customContextMenuRequested, this,
           &MemoryViewWidget::OnContextMenu);
   connect(&Settings::Instance(), &Settings::ThemeChanged, this, &MemoryViewWidget::Update);
+
   // Update on stepping. Is there a better way than this?
   connect(Host::GetInstance(), &Host::UpdateDisasmDialog, this, [this] {
     if (Core::GetState() == Core::State::Paused)
       Update();
   });
+
+  connect(&Settings::Instance(), &Settings::DebugFontChanged, this, &MemoryViewWidget::Update);
   setContextMenuPolicy(Qt::CustomContextMenu);
 
   Update();
@@ -85,17 +83,20 @@ void MemoryViewWidget::Update()
   if (rowCount() == 0)
     setRowCount(1);
 
-  setRowHeight(0, 24);
+  const QFontMetrics fm(Settings::Instance().GetDebugFont());
+  const int fonth = fm.height();
+  verticalHeader()->setDefaultSectionSize(fonth + 3);
+  horizontalHeader()->setMinimumSectionSize(fonth + 3);
 
   // Calculate (roughly) how many rows will fit in our table
   int rows = std::round((height() / static_cast<float>(rowHeight(0))) - 0.25);
-
   setRowCount(rows);
+
+  // Get target memory to tag it if it exists
+  const u32 PC_Target = PCTargetMemory();
 
   for (int i = 0; i < rows; i++)
   {
-    setRowHeight(i, 24);
-
     // Two column mode has rows increment by 0x4 instead of 0x10
     u32 rowmod = ((GetColumnCount(m_type) == 2) ? 4 : 16);
     u32 addr = m_address - (rowCount() / 2) * rowmod + i * rowmod;
@@ -119,7 +120,18 @@ void MemoryViewWidget::Update()
     // Don't update values unless game is started
     if ((Core::GetState() != Core::State::Paused && Core::GetState() != Core::State::Running) ||
         !PowerPC::HostIsRAMAddress(addr))
+    {
+      for (int c = 2; c < columnCount(); c++)
+      {
+        auto* item = new QTableWidgetItem(QStringLiteral("-"));
+        item->setFlags(Qt::ItemIsEnabled);
+        item->setData(Qt::UserRole, addr);
+
+        setItem(i, c, item);
+      }
+
       continue;
+    }
 
     auto* description_item =
         new QTableWidgetItem(QString::fromStdString(PowerPC::debug_interface.GetDescription(addr)));
@@ -146,6 +158,9 @@ void MemoryViewWidget::Update()
           hex_item->setBackground(Qt::red);
         else
           row_breakpoint = false;
+
+        if (address == PC_Target)
+          hex_item->setBackground(Qt::cyan);
 
         setItem(i, 2 + c, hex_item);
 
@@ -213,12 +228,14 @@ void MemoryViewWidget::Update()
 
     if (row_breakpoint)
     {
-      bp_item->setData(Qt::DecorationRole,
-                       Resources::GetScaledThemeIcon("debugger_breakpoint").pixmap(QSize(24, 24)));
+      bp_item->setData(
+          Qt::DecorationRole,
+          Resources::GetScaledThemeIcon("debugger_breakpoint").pixmap(QSize(fonth - 2, fonth - 2)));
     }
   }
 
-  setColumnWidth(0, 24 + 5);
+  setColumnWidth(0, fonth + 3);
+
   for (int i = 1; i < columnCount(); i++)
   {
     resizeColumnToContents(i);
@@ -231,6 +248,21 @@ void MemoryViewWidget::Update()
 
   viewport()->update();
   update();
+}
+
+const u32 MemoryViewWidget::PCTargetMemory()
+{
+  // If PC targets a memory location, output it
+  if (Core::GetState() != Core::State::Paused)
+    return 0;
+
+  const std::string instruction = PowerPC::debug_interface.Disassemble(PC);
+  if ((instruction.compare(0, 2, "st") != 0 && instruction.compare(0, 1, "l") != 0 &&
+       instruction.compare(0, 5, "psq_l") != 0 && instruction.compare(0, 5, "psq_s") != 0) ||
+      instruction.compare(0, 2, "li") == 0)
+    return 0;
+  else
+    return PowerPC::debug_interface.GetMemoryAddressFromInstruction(instruction);
 }
 
 void MemoryViewWidget::SetType(Type type)
