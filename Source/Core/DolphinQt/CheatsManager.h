@@ -23,6 +23,7 @@ class QSplitter;
 class QTabWidget;
 class QTableWidget;
 class QTableWidgetItem;
+class QTimer;
 struct Result;
 
 namespace Core
@@ -63,6 +64,7 @@ private:
   void OnNewSearchClicked();
   void NextSearch();
   u32 SwapValue(u32 value);
+  void TimedUpdate();
   void Update();
   void GenerateARCode();
 
@@ -91,6 +93,7 @@ private:
   QPushButton* m_match_next;
   QPushButton* m_match_refresh;
   QPushButton* m_match_reset;
+  QTimer* m_timer;
 
   QRadioButton* m_match_decimal;
   QRadioButton* m_match_hexadecimal;

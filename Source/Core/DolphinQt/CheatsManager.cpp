@@ -19,6 +19,8 @@
 #include <QSplitter>
 #include <QTabWidget>
 #include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include "Core/ConfigManager.h"
@@ -35,7 +37,7 @@
 #include "DolphinQt/GameList/GameListModel.h"
 #include "DolphinQt/Settings.h"
 
-constexpr u32 MAX_RESULTS = 50;
+constexpr u32 MAX_RESULTS = 2500;
 
 constexpr int INDEX_ROLE = Qt::UserRole;
 constexpr int COLUMN_ROLE = Qt::UserRole + 1;
@@ -139,7 +141,7 @@ void CheatsManager::CreateWidgets()
 void CheatsManager::ConnectWidgets()
 {
   connect(m_button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
-
+  connect(m_timer, &QTimer::timeout, this, &CheatsManager::TimerUpdate);
   connect(m_match_new, &QPushButton::pressed, this, &CheatsManager::OnNewSearchClicked);
   connect(m_match_next, &QPushButton::pressed, this, &CheatsManager::NextSearch);
   connect(m_match_refresh, &QPushButton::pressed, this, &CheatsManager::Update);
@@ -323,8 +325,8 @@ QWidget* CheatsManager::CreateCheatSearch()
     m_match_length->addItem(option);
   }
 
-  for (const auto& option : {tr("Equals to"), tr("Not equals to"), tr("Less than"),
-                             tr("Less or equal to"), tr("More than"), tr("More or equal to")})
+  for (const auto& option :
+       {tr("Unknown"), tr("Not Equal"), tr("Equal"), tr("Greater than"), tr("Less than")})
   {
     m_match_operation->addItem(option);
   }
@@ -352,6 +354,8 @@ QWidget* CheatsManager::CreateCheatSearch()
   layout->addWidget(m_match_refresh);
   layout->addWidget(m_match_reset);
 
+  m_timer = new QTimer();
+  m_timer->setInterval(1000);
   // Splitters
   m_option_splitter = new QSplitter(Qt::Horizontal);
   m_table_splitter = new QSplitter(Qt::Vertical);
@@ -464,8 +468,8 @@ void CheatsManager::OnNewSearchClicked()
     memcpy(&r.old_value, &Memory::m_pRAM[addr], m_search_type_size);
     m_results.push_back(r);
   }
-
   Update();
+  m_timer->start();
 }
 
 void CheatsManager::NextSearch()
@@ -522,6 +526,59 @@ u32 CheatsManager::SwapValue(u32 value)
   return value;
 }
 
+void CheatsManager::TimedUpdate()
+{
+  int first_row = m_match_table->rowAt(m_match_table->rect().top());
+  int last_row = m_match_table->rowAt(m_match_table->rect().bottom());
+
+  if (last_row == -1)
+    last_row = m_match_table->rowCount();
+
+  Core::RunAsCPUThread([=] {
+    for (int i = first_row; i <= last_row; i++)
+    {
+      u32 address = m_results[i].address + 0x80000000;
+      auto* value_item = new QTableWidgetItem;
+      value_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+
+      if (PowerPC::HostIsRAMAddress(address))
+      {
+        switch (m_search_type_size)
+        {
+        case 1:
+          value_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U8(address), 2, 16, QLatin1Char('0')));
+          break;
+        case 2:
+          value_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U16(address), 4, 16, QLatin1Char('0')));
+          break;
+        case 4:
+          value_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16, QLatin1Char('0')));
+          break;
+        case 5:
+          value_item->setText(QString::number(PowerPC::HostRead_F32(address)));
+          break;
+        case 6:
+          value_item->setText(QString::number(PowerPC::HostRead_F64(address)));
+          break;
+        default:
+          value_item->setText(tr("String Match"));
+          break;
+        }
+      }
+      else
+      {
+        value_item->setText(QStringLiteral("---"));
+      }
+
+      value_item->setData(INDEX_ROLE, i);
+      m_match_table->setItem(i, 1, value_item);
+    }
+  });
+}
+
 void CheatsManager::Update()
 {
   m_match_table->clear();
@@ -531,52 +588,61 @@ void CheatsManager::Update()
 
   m_match_table->setHorizontalHeaderLabels({tr("Address"), tr("Value")});
   m_watch_table->setHorizontalHeaderLabels({tr("Name"), tr("Address"), tr("Lock"), tr("Value")});
+  size_t results_display;
 
   if (m_results.size() > MAX_RESULTS)
   {
+    results_display = MAX_RESULTS;
     m_result_label->setText(tr("Too many matches to display (%1)").arg(m_results.size()));
-    return;
+  }
+  else
+  {
+    results_display = m_results.size();
   }
 
   m_result_label->setText(tr("%1 Match(es)").arg(m_results.size()));
   m_match_table->setRowCount(static_cast<int>(m_results.size()));
 
   if (m_results.empty())
+  {
+    m_timer->stop();
     return;
+  }
 
   m_updating = true;
 
-  Core::RunAsCPUThread([this] {
-    for (size_t i = 0; i < m_results.size(); i++)
+  Core::RunAsCPUThread([=] {
+    for (size_t i = 0; i < results_display; i++)
     {
-      auto* address_item = new QTableWidgetItem(
-          QStringLiteral("%1").arg(m_results[i].address, 8, 16, QLatin1Char('0')));
+      u32 address = m_results[i].address + 0x80000000;
+      auto* address_item =
+          new QTableWidgetItem(QStringLiteral("%1").arg(address, 8, 16, QLatin1Char('0')));
       auto* value_item = new QTableWidgetItem;
 
       address_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
       value_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
-      if (PowerPC::HostIsRAMAddress(m_results[i].address))
+      if (PowerPC::HostIsRAMAddress(address))
       {
         switch (m_search_type_size)
         {
         case 1:
-          value_item->setText(QStringLiteral("%1").arg(PowerPC::HostRead_U8(m_results[i].address),
-                                                       2, 16, QLatin1Char('0')));
+          value_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U8(address), 2, 16, QLatin1Char('0')));
           break;
         case 2:
-          value_item->setText(QStringLiteral("%1").arg(PowerPC::HostRead_U16(m_results[i].address),
-                                                       4, 16, QLatin1Char('0')));
+          value_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U16(address), 4, 16, QLatin1Char('0')));
           break;
         case 4:
-          value_item->setText(QStringLiteral("%1").arg(PowerPC::HostRead_U32(m_results[i].address),
-                                                       8, 16, QLatin1Char('0')));
+          value_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16, QLatin1Char('0')));
           break;
         case 5:
-          value_item->setText(QString::number(PowerPC::HostRead_F32(m_results[i].address)));
+          value_item->setText(QString::number(PowerPC::HostRead_F32(address)));
           break;
         case 6:
-          value_item->setText(QString::number(PowerPC::HostRead_F64(m_results[i].address)));
+          value_item->setText(QString::number(PowerPC::HostRead_F64(address)));
           break;
         default:
           value_item->setText(tr("String Match"));
@@ -662,7 +728,6 @@ void CheatsManager::Update()
        m_watch_table->setItem(static_cast<int>(i), 3, value_item);
        }*/
   });
-
   // m_updating = false;
 }
 
