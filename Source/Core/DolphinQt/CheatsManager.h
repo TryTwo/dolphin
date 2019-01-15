@@ -66,11 +66,6 @@ private:
   u32 SwapValue(u32 value);
   void TimedUpdate();
   void Update();
-  void GenerateARCode();
-
-  void OnWatchContextMenu();
-  void OnMatchContextMenu();
-  void OnWatchItemChanged(QTableWidgetItem* item);
 
   std::vector<Result> m_results;
   std::vector<Result> m_watch;
