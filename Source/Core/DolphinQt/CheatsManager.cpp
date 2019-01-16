@@ -82,6 +82,12 @@ CheatsManager::CheatsManager(QWidget* parent) : QDialog(parent)
 
 CheatsManager::~CheatsManager() = default;
 
+void CheatsManager::reject()
+{
+  m_timer->stop();
+  QDialog::reject();
+}
+
 void CheatsManager::OnStateChanged(Core::State state)
 {
   if (state != Core::State::Running && state != Core::State::Paused)
@@ -145,6 +151,18 @@ void CheatsManager::ConnectWidgets()
   m_match_table->setContextMenuPolicy(Qt::CustomContextMenu);
   connect(m_match_table, &QTableWidget::customContextMenuRequested, this,
           &CheatsManager::OnMatchContextMenu);
+  connect(m_refresh, &QLineEdit::textChanged, [this]() {
+    bool good;
+    u32 interval = m_refresh->text().toUInt(&good, 10);
+    if (good)
+      m_timer->setInterval(interval);
+    if (interval == 0)
+      m_timer->setSingleShot(true);
+    else
+      m_timer->setSingleShot(false);
+    if (!m_results.empty())
+      m_timer->start();
+  });
 }
 
 QWidget* CheatsManager::CreateCheatSearch()
@@ -219,6 +237,12 @@ QWidget* CheatsManager::CreateCheatSearch()
   range_layout->addWidget(m_range_start);
   range_layout->addWidget(m_range_end);
 
+  auto* refresh_layout = new QHBoxLayout;
+  m_refresh_label = new QLabel(tr("Refresh speed in milliseconds (0 = off)"));
+  m_refresh = new QLineEdit(tr("1000"));
+  refresh_layout->addWidget(m_refresh_label);
+  refresh_layout->addWidget(m_refresh);
+
   layout->addWidget(m_result_label);
   layout->addWidget(m_match_length);
   layout->addWidget(m_match_operation);
@@ -230,6 +254,7 @@ QWidget* CheatsManager::CreateCheatSearch()
   layout->addWidget(m_match_next);
   layout->addWidget(m_match_refresh);
   layout->addWidget(m_match_reset);
+  layout->addLayout(refresh_layout);
 
   m_timer = new QTimer();
   m_timer->setInterval(1000);
@@ -362,6 +387,12 @@ void CheatsManager::OnNewSearchClicked()
   if (!m_ram.ptr)
     return;
 
+  for (auto* widget : {m_ram_main, m_ram_wii, m_ram_fakevmem})
+    widget->setDisabled(true);
+  m_range_start->setDisabled(true);
+  m_range_end->setDisabled(true);
+  m_match_new->setDisabled(true);
+
   // Determine the user-selected data size for this search.
   m_search_type_size = GetTypeSize();
 
@@ -385,9 +416,9 @@ void CheatsManager::OnNewSearchClicked()
   if (!good)
     custom_end = range_end;
 
-  if (custom_start > range_start && custom_start < custom_end)
+  if (custom_start > range_start && custom_start < custom_end && custom_start < range_end)
     range_start = custom_start;
-  if (custom_end < range_end && custom_end > custom_start)
+  if (custom_end < range_end && custom_end > custom_start && custom_end > range_start)
     range_end = custom_end;
 
   Result r;
@@ -441,6 +472,7 @@ void CheatsManager::NextSearch()
   FilterCheatSearchResults(val, blank_user_value);
 
   Update();
+  m_timer->start();
 }
 
 u32 CheatsManager::SwapValue(u32 value)
@@ -627,7 +659,13 @@ void CheatsManager::OnMatchContextMenu()
 void CheatsManager::Reset()
 {
   m_results.clear();
+  m_match_table->setRowCount(0);
   m_match_next->setEnabled(false);
+  for (auto* widget : {m_ram_main, m_ram_wii, m_ram_fakevmem})
+    widget->setEnabled(true);
+  m_range_start->setEnabled(true);
+  m_range_end->setEnabled(true);
+  m_match_new->setEnabled(true);
   m_match_table->clear();
   m_result_label->setText(QStringLiteral(""));
   Update();

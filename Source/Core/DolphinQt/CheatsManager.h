@@ -50,6 +50,7 @@ class CheatsManager : public QDialog
 public:
   explicit CheatsManager(QWidget* parent = nullptr);
   ~CheatsManager();
+  void reject() override;
 
 private:
   class Result final
@@ -95,6 +96,8 @@ private:
   QLineEdit* m_match_value;
   QLineEdit* m_range_start;
   QLineEdit* m_range_end;
+  QLineEdit* m_refresh;
+  QLabel* m_refresh_label;
   QPushButton* m_match_new;
   QPushButton* m_match_next;
   QPushButton* m_match_refresh;
