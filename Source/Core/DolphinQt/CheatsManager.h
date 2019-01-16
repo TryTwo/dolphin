@@ -26,6 +26,13 @@ class QTableWidgetItem;
 class QTimer;
 struct Result;
 
+struct Ram
+{
+  const u8* ptr = nullptr;
+  std::size_t size;
+  u32 base;
+};
+
 namespace Core
 {
 enum class State;
@@ -39,6 +46,7 @@ class GameFile;
 class CheatsManager : public QDialog
 {
   Q_OBJECT
+
 public:
   explicit CheatsManager(QWidget* parent = nullptr);
   ~CheatsManager();
@@ -53,12 +61,13 @@ private:
   };
 
   QWidget* CreateCheatSearch();
+  void MemoryPtr(bool update = true);
   void CreateWidgets();
   void ConnectWidgets();
   void OnStateChanged(Core::State state);
 
   int GetTypeSize() const;
-
+  void OnMatchContextMenu();
   void Reset();
   void FilterCheatSearchResults(u32 value, bool prev);
   void OnNewSearchClicked();
@@ -67,8 +76,8 @@ private:
   void TimedUpdate();
   void Update();
 
+  Ram m_ram;
   std::vector<Result> m_results;
-  std::vector<Result> m_watch;
   std::shared_ptr<const UICommon::GameFile> m_game_file;
   QDialogButtonBox* m_button_box;
   QTabWidget* m_tab_widget = nullptr;
@@ -84,6 +93,8 @@ private:
   QComboBox* m_match_length;
   QComboBox* m_match_operation;
   QLineEdit* m_match_value;
+  QLineEdit* m_range_start;
+  QLineEdit* m_range_end;
   QPushButton* m_match_new;
   QPushButton* m_match_next;
   QPushButton* m_match_refresh;
@@ -93,6 +104,9 @@ private:
   QRadioButton* m_match_decimal;
   QRadioButton* m_match_hexadecimal;
   QRadioButton* m_match_octal;
+  QRadioButton* m_ram_main;
+  QRadioButton* m_ram_wii;
+  QRadioButton* m_ram_fakevmem;
   bool m_updating = false;
   int m_search_type_size;
   bool m_scan_is_initialized = false;

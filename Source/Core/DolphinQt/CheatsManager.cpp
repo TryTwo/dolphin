@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include <QApplication>
+#include <QClipboard>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QGroupBox>
@@ -37,7 +39,7 @@
 #include "DolphinQt/GameList/GameListModel.h"
 #include "DolphinQt/Settings.h"
 
-constexpr u32 MAX_RESULTS = 4096;
+constexpr int MAX_RESULTS = 4096;
 
 constexpr int INDEX_ROLE = Qt::UserRole;
 constexpr int COLUMN_ROLE = Qt::UserRole + 1;
@@ -137,6 +139,12 @@ void CheatsManager::ConnectWidgets()
   connect(m_match_next, &QPushButton::pressed, this, &CheatsManager::NextSearch);
   connect(m_match_refresh, &QPushButton::pressed, this, &CheatsManager::Update);
   connect(m_match_reset, &QPushButton::pressed, this, &CheatsManager::Reset);
+  for (auto* radio : {m_ram_main, m_ram_wii, m_ram_fakevmem})
+    connect(radio, &QRadioButton::toggled, this, &CheatsManager::MemoryPtr);
+
+  m_match_table->setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(m_match_table, &QTableWidget::customContextMenuRequested, this,
+          &CheatsManager::OnMatchContextMenu);
 }
 
 QWidget* CheatsManager::CreateCheatSearch()
@@ -166,6 +174,8 @@ QWidget* CheatsManager::CreateCheatSearch()
     m_match_length->addItem(option);
   }
 
+  m_match_length->setCurrentIndex(2);
+
   for (const auto& option :
        {tr("Unknown"), tr("Not Equal"), tr("Equal"), tr("Greater than"), tr("Less than")})
   {
@@ -184,12 +194,38 @@ QWidget* CheatsManager::CreateCheatSearch()
   group_layout->addWidget(m_match_decimal);
   group_layout->addWidget(m_match_hexadecimal);
   group_layout->addWidget(m_match_octal);
+  group_layout->setSpacing(1);
+
+  auto* ram_box = new QGroupBox(tr("Type"));
+  auto* ram_layout = new QHBoxLayout;
+  ram_box->setLayout(ram_layout);
+
+  m_ram_main = new QRadioButton(tr("Main"));
+  m_ram_wii = new QRadioButton(tr("Wii"));
+  m_ram_fakevmem = new QRadioButton(tr("FakeVMEM"));
+
+  m_ram_main->setChecked(true);
+
+  ram_layout->addWidget(m_ram_main);
+  ram_layout->addWidget(m_ram_wii);
+  ram_layout->addWidget(m_ram_fakevmem);
+  ram_layout->setSpacing(1);
+
+  auto* range_layout = new QHBoxLayout;
+  m_range_start = new QLineEdit(tr("80000000"));
+  m_range_end = new QLineEdit(tr("81800000"));
+  m_range_start->setMaxLength(8);
+  m_range_end->setMaxLength(8);
+  range_layout->addWidget(m_range_start);
+  range_layout->addWidget(m_range_end);
 
   layout->addWidget(m_result_label);
   layout->addWidget(m_match_length);
   layout->addWidget(m_match_operation);
   layout->addWidget(m_match_value);
   layout->addWidget(group_box);
+  layout->addWidget(ram_box);
+  layout->addLayout(range_layout);
   layout->addWidget(m_match_new);
   layout->addWidget(m_match_next);
   layout->addWidget(m_match_refresh);
@@ -197,6 +233,7 @@ QWidget* CheatsManager::CreateCheatSearch()
 
   m_timer = new QTimer();
   m_timer->setInterval(1000);
+
   // Splitters
   m_option_splitter = new QSplitter(Qt::Horizontal);
   m_table_splitter = new QSplitter(Qt::Vertical);
@@ -207,6 +244,37 @@ QWidget* CheatsManager::CreateCheatSearch()
   m_option_splitter->addWidget(options);
 
   return m_option_splitter;
+}
+
+void CheatsManager::MemoryPtr(bool update)
+{
+  if (m_ram_main->isChecked() && Memory::m_pRAM)
+  {
+    m_ram.ptr = Memory::m_pRAM;
+    m_ram.size = Memory::REALRAM_SIZE;
+    m_ram.base = 0x80000000;
+  }
+  else if (m_ram_wii->isChecked() && Memory::m_pEXRAM)
+  {
+    m_ram.ptr = Memory::m_pEXRAM;
+    m_ram.size = Memory::EXRAM_SIZE;
+    m_ram.base = 0x90000000;
+  }
+  else if (m_ram_fakevmem->isChecked() && Memory::m_pFakeVMEM)
+  {
+    m_ram.ptr = Memory::m_pFakeVMEM;
+    m_ram.size = Memory::FAKEVMEM_SIZE;
+    m_ram.base = 0x7E000000;
+  }
+  else
+  {
+    m_result_label->setText(tr("Memory region is invalid."));
+  }
+
+  if (!update)
+    return;
+  m_range_start->setText(QStringLiteral("%1").arg(m_ram.base, 8, 16));
+  m_range_end->setText(QStringLiteral("%1").arg(m_ram.base + m_ram.size, 8, 16));
 }
 
 int CheatsManager::GetTypeSize() const
@@ -263,7 +331,7 @@ void CheatsManager::FilterCheatSearchResults(u32 value, bool prev)
       value = result.old_value;
 
     // with big endian, can just use memcmp for ><= comparison
-    int cmp_result = std::memcmp(&Memory::m_pRAM[result.address], &value, m_search_type_size);
+    int cmp_result = std::memcmp(&m_ram.ptr[result.address], &value, m_search_type_size);
     ComparisonMask cmp_mask;
     if (cmp_result < 0)
       cmp_mask = ComparisonMask::LESS_THAN;
@@ -274,7 +342,7 @@ void CheatsManager::FilterCheatSearchResults(u32 value, bool prev)
 
     if (static_cast<int>(cmp_mask & filter_mask))
     {
-      std::memcpy(&result.old_value, &Memory::m_pRAM[result.address], m_search_type_size);
+      std::memcpy(&result.old_value, &m_ram.ptr[result.address], m_search_type_size);
       filtered_results.push_back(result);
     }
   }
@@ -289,23 +357,45 @@ void CheatsManager::OnNewSearchClicked()
     return;
   }
 
+  MemoryPtr(false);
+
+  if (!m_ram.ptr)
+    return;
+
   // Determine the user-selected data size for this search.
   m_search_type_size = GetTypeSize();
 
   // Set up the search results efficiently to prevent automatic re-allocations.
   m_results.clear();
-  m_results.reserve(Memory::RAM_SIZE / m_search_type_size);
+  m_results.reserve(m_ram.size / m_search_type_size);
 
   // Enable the "Next Scan" button.
   m_scan_is_initialized = true;
   m_match_next->setEnabled(true);
+  bool good;
+
+  u32 range_start = 0;
+  u32 range_end = static_cast<u32>(m_ram.size);
+
+  u32 custom_start = (m_range_start->text().toUInt(&good, 16) - m_ram.base) & 0xfffffff0;
+  if (!good)
+    custom_start = range_start;
+
+  u32 custom_end = (m_range_end->text().toUInt(&good, 16) - m_ram.base) & 0xfffffff0;
+  if (!good)
+    custom_end = range_end;
+
+  if (custom_start > range_start && custom_start < custom_end)
+    range_start = custom_start;
+  if (custom_end < range_end && custom_end > custom_start)
+    range_end = custom_end;
 
   Result r;
   // can I assume cheatable values will be aligned like this?
-  for (u32 addr = 0; addr != Memory::RAM_SIZE; addr += m_search_type_size)
+  for (u32 addr = range_start; addr != range_end; addr += m_search_type_size)
   {
     r.address = addr;
-    memcpy(&r.old_value, &Memory::m_pRAM[addr], m_search_type_size);
+    memcpy(&r.old_value, &m_ram.ptr[addr], m_search_type_size);
     m_results.push_back(r);
   }
   Update();
@@ -314,18 +404,20 @@ void CheatsManager::OnNewSearchClicked()
 
 void CheatsManager::NextSearch()
 {
-  if (!Memory::m_pRAM)
+  if (!m_ram.ptr)
   {
     m_result_label->setText(tr("Memory Not Ready"));
     return;
   }
+  const int base =
+      (m_match_decimal->isChecked() ? 10 : (m_match_hexadecimal->isChecked() ? 16 : 8));
 
   u32 val = 0;
   bool blank_user_value = m_match_value->text().isEmpty();
   if (!blank_user_value)
   {
     bool good;
-    unsigned long value = m_match_value->text().toULong(&good, 0);
+    unsigned long value = m_match_value->text().toULong(&good, base);
 
     if (!good)
     {
@@ -374,6 +466,20 @@ void CheatsManager::TimedUpdate()
     return;
   }
 
+  int results_display;
+
+  if (m_results.size() > MAX_RESULTS)
+  {
+    results_display = MAX_RESULTS;
+    m_result_label->setText(tr("Too many matches to display (%1)").arg(m_results.size()));
+  }
+  else
+  {
+    results_display = static_cast<int>(m_results.size());
+  }
+
+  m_match_table->setRowCount(results_display);
+
   int first_row = m_match_table->rowAt(m_match_table->rect().top());
   int last_row = m_match_table->rowAt(m_match_table->rect().bottom());
 
@@ -383,7 +489,7 @@ void CheatsManager::TimedUpdate()
   Core::RunAsCPUThread([=] {
     for (int i = first_row; i <= last_row; i++)
     {
-      u32 address = m_results[i].address + 0x80000000;
+      u32 address = m_results[i].address + m_ram.base;
       auto* value_item = new QTableWidgetItem;
       value_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
@@ -427,24 +533,11 @@ void CheatsManager::TimedUpdate()
 
 void CheatsManager::Update()
 {
+  // ERROR &Host::UpdateDisasmDialog getting triggered.
   m_match_table->clear();
   m_match_table->setColumnCount(2);
 
   m_match_table->setHorizontalHeaderLabels({tr("Address"), tr("Value")});
-  size_t results_display;
-
-  if (m_results.size() > MAX_RESULTS)
-  {
-    results_display = MAX_RESULTS;
-    m_result_label->setText(tr("Too many matches to display (%1)").arg(m_results.size()));
-  }
-  else
-  {
-    results_display = m_results.size();
-  }
-
-  m_result_label->setText(tr("%1 Match(es)").arg(m_results.size()));
-  m_match_table->setRowCount(static_cast<int>(m_results.size()));
 
   if (m_results.empty())
   {
@@ -452,10 +545,23 @@ void CheatsManager::Update()
     return;
   }
 
+  int results_display = static_cast<int>(m_results.size());
+
+  if (results_display > MAX_RESULTS)
+  {
+    results_display = MAX_RESULTS;
+    m_result_label->setText(tr("Too many matches to display (%1)").arg(m_results.size()));
+  }
+
+  m_match_table->setRowCount(results_display);
+
+  m_result_label->setText(tr("%1 Match(es)").arg(m_results.size()));
+  m_match_table->setRowCount(static_cast<int>(m_results.size()));
+
   Core::RunAsCPUThread([=] {
     for (size_t i = 0; i < results_display; i++)
     {
-      u32 address = m_results[i].address + 0x80000000;
+      u32 address = m_results[i].address + m_ram.base;
       auto* address_item =
           new QTableWidgetItem(QStringLiteral("%1").arg(address, 8, 16, QLatin1Char('0')));
       auto* value_item = new QTableWidgetItem;
@@ -504,12 +610,25 @@ void CheatsManager::Update()
   });
 }
 
+void CheatsManager::OnMatchContextMenu()
+{
+  QMenu* menu = new QMenu(this);
+
+  menu->addAction(tr("Copy Address"), this, [this] {
+    QApplication::clipboard()->setText(m_match_table->selectedItems()[0]->text());
+  });
+  menu->addAction(tr("Copy Value"), this, [this] {
+    QApplication::clipboard()->setText(m_match_table->selectedItems()[1]->text());
+  });
+
+  menu->exec(QCursor::pos());
+}
+
 void CheatsManager::Reset()
 {
   m_results.clear();
   m_match_next->setEnabled(false);
   m_match_table->clear();
   m_result_label->setText(QStringLiteral(""));
-
   Update();
 }

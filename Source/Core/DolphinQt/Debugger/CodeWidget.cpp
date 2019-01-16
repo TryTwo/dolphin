@@ -43,8 +43,9 @@ CodeWidget::CodeWidget(QWidget* parent) : QDockWidget(parent)
           [this](bool visible) { setHidden(!visible); });
 
   connect(Host::GetInstance(), &Host::UpdateDisasmDialog, this, [this] {
-    if (Core::GetState() == Core::State::Paused)
-      SetAddress(PowerPC::ppcState.pc, CodeViewWidget::SetAddressUpdate::WithoutUpdate);
+    if (Core::GetState() != Core::State::Paused)
+      return;
+    SetAddress(PowerPC::ppcState.pc, CodeViewWidget::SetAddressUpdate::WithoutUpdate);
     Update();
   });
 
@@ -54,11 +55,10 @@ CodeWidget::CodeWidget(QWidget* parent) : QDockWidget(parent)
           [this](bool enabled) { setHidden(!enabled || !Settings::Instance().IsCodeVisible()); });
 
   connect(&Settings::Instance(), &Settings::EmulationStateChanged, [this]() {
-    if (Core::GetState() == Core::State::Paused)
-    {
-      SetAddress(PC, CodeViewWidget::SetAddressUpdate::WithoutUpdate);
-      Update();
-    }
+    if (Core::GetState() != Core::State::Paused)
+      return;
+    SetAddress(PowerPC::ppcState.pc, CodeViewWidget::SetAddressUpdate::WithoutUpdate);
+    Update();
   });
 
   setHidden(!Settings::Instance().IsCodeVisible() || !Settings::Instance().IsDebugModeEnabled());
