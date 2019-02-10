@@ -350,27 +350,29 @@ void CheatsManager::FilterCheatSearchResults(u32 value, bool prev)
   std::vector<Result> filtered_results;
   filtered_results.reserve(m_results.size());
 
-  for (Result& result : m_results)
-  {
-    if (prev)
-      value = result.old_value;
-
-    // with big endian, can just use memcmp for ><= comparison
-    int cmp_result = std::memcmp(&m_ram.ptr[result.address], &value, m_search_type_size);
-    ComparisonMask cmp_mask;
-    if (cmp_result < 0)
-      cmp_mask = ComparisonMask::LESS_THAN;
-    else if (cmp_result)
-      cmp_mask = ComparisonMask::GREATER_THAN;
-    else
-      cmp_mask = ComparisonMask::EQUAL;
-
-    if (static_cast<int>(cmp_mask & filter_mask))
+  Core::RunAsCPUThread([&] {
+    for (Result& result : m_results)
     {
-      std::memcpy(&result.old_value, &m_ram.ptr[result.address], m_search_type_size);
-      filtered_results.push_back(result);
+      if (prev)
+        value = result.old_value;
+
+      // with big endian, can just use memcmp for ><= comparison
+      int cmp_result = std::memcmp(&m_ram.ptr[result.address], &value, m_search_type_size);
+      ComparisonMask cmp_mask;
+      if (cmp_result < 0)
+        cmp_mask = ComparisonMask::LESS_THAN;
+      else if (cmp_result)
+        cmp_mask = ComparisonMask::GREATER_THAN;
+      else
+        cmp_mask = ComparisonMask::EQUAL;
+
+      if (static_cast<int>(cmp_mask & filter_mask))
+      {
+        std::memcpy(&result.old_value, &m_ram.ptr[result.address], m_search_type_size);
+        filtered_results.push_back(result);
+      }
     }
-  }
+  });
   m_results.swap(filtered_results);
 }
 
@@ -421,14 +423,16 @@ void CheatsManager::OnNewSearchClicked()
   if (custom_end < range_end && custom_end > custom_start && custom_end > range_start)
     range_end = custom_end;
 
-  Result r;
-  // can I assume cheatable values will be aligned like this?
-  for (u32 addr = range_start; addr != range_end; addr += m_search_type_size)
-  {
-    r.address = addr;
-    memcpy(&r.old_value, &m_ram.ptr[addr], m_search_type_size);
-    m_results.push_back(r);
-  }
+  Core::RunAsCPUThread([&] {
+    Result r;
+    for (u32 addr = range_start; addr != range_end; addr += m_search_type_size)
+    {
+      r.address = addr;
+      memcpy(&r.old_value, &m_ram.ptr[addr], m_search_type_size);
+      m_results.push_back(r);
+    }
+  });
+
   Update();
   m_timer->start();
 }
@@ -520,7 +524,7 @@ void CheatsManager::TimedUpdate()
   if (last_row == -1)
     last_row = m_match_table->rowCount();
 
-  Core::RunAsCPUThread([=] {
+  Core::RunAsCPUThread([&] {
     for (int i = first_row; i <= last_row; i++)
     {
       u32 address = m_results[i].address + m_ram.base;
@@ -594,7 +598,7 @@ void CheatsManager::Update()
   m_result_label->setText(tr("%1 Match(es)").arg(m_results.size()));
   m_match_table->setRowCount(static_cast<int>(m_results.size()));
 
-  Core::RunAsCPUThread([=] {
+  Core::RunAsCPUThread([&] {
     for (size_t i = 0; i < results_display; i++)
     {
       u32 address = m_results[i].address + m_ram.base;
