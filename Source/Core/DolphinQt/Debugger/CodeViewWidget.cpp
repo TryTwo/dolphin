@@ -14,6 +14,7 @@
 #include <QInputDialog>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QResizeEvent>
@@ -32,6 +33,7 @@
 #include "Core/PowerPC/PowerPC.h"
 #include "DolphinQt/Debugger/PatchInstructionDialog.h"
 #include "DolphinQt/Host.h"
+#include "DolphinQt/Debugger/EditSymbolDialog.h"
 #include "DolphinQt/Resources.h"
 #include "DolphinQt/Settings.h"
 
@@ -534,17 +536,14 @@ void CodeViewWidget::OnContextMenu()
 
   menu->addSeparator();
 
-  auto* symbol_rename_action =
-      menu->addAction(tr("&Rename symbol"), this, &CodeViewWidget::OnRenameSymbol);
-  auto* symbol_size_action =
-      menu->addAction(tr("Set symbol &size"), this, &CodeViewWidget::OnSetSymbolSize);
-  auto* symbol_end_action =
-      menu->addAction(tr("Set symbol &end address"), this, &CodeViewWidget::OnSetSymbolEndAddress);
+  auto* function_action =
+      menu->addAction(tr("&Add function symbol"), this, &CodeViewWidget::OnAddFunction);
+  auto* symbol_edit_action =
+      menu->addAction(tr("&Edit symbol"), this, &CodeViewWidget::OnEditSymbol);
+
   menu->addSeparator();
 
   menu->addAction(tr("Run &To Here"), this, &CodeViewWidget::OnRunToHere);
-  auto* function_action =
-      menu->addAction(tr("&Add function"), this, &CodeViewWidget::OnAddFunction);
   auto* ppc_action = menu->addAction(tr("PPC vs Host"), this, &CodeViewWidget::OnPPCComparison);
   auto* insert_blr_action = menu->addAction(tr("&Insert blr"), this, &CodeViewWidget::OnInsertBLR);
   auto* insert_nop_action = menu->addAction(tr("Insert &nop"), this, &CodeViewWidget::OnInsertNOP);
@@ -560,8 +559,7 @@ void CodeViewWidget::OnContextMenu()
                        insert_nop_action, replace_action})
     action->setEnabled(running);
 
-  for (auto* action : {symbol_rename_action, symbol_size_action, symbol_end_action})
-    action->setEnabled(has_symbol);
+  symbol_edit_action->setEnabled(has_symbol);
 
   restore_action->setEnabled(running && PowerPC::debug_interface.HasEnabledPatch(addr));
 
@@ -638,8 +636,42 @@ void CodeViewWidget::OnPPCComparison()
 void CodeViewWidget::OnAddFunction()
 {
   const u32 addr = GetContextAddress();
+  int confirm = QMessageBox::warning(this, tr("Add Function Symbol"),
+                                     tr("Force new function symbol to be made at ") +
+                                         QString::number(addr, 16) + tr("?"),
+                                     QMessageBox::Ok | QMessageBox::Cancel);
+
+  if (confirm != QMessageBox::Ok)
+    return;
 
   g_symbolDB.AddFunction(addr);
+  emit SymbolsChanged();
+  Update();
+}
+
+void CodeViewWidget::OnEditSymbol()
+{
+  const u32 addr = GetContextAddress();
+  Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(addr);
+
+  if (symbol == nullptr)
+    return;
+
+  std::string name = symbol->name;
+  u32 size = symbol->size;
+  const u32 symbol_address = symbol->address;
+
+  EditSymbolDialog* dialog = new EditSymbolDialog(this, name, size, symbol_address);
+
+  if (dialog->exec() != QDialog::Accepted)
+    return;
+
+  if (symbol->name != name)
+    symbol->Rename(name);
+
+  if (symbol->size != size)
+    PPCAnalyst::ReanalyzeFunction(symbol->address, *symbol, size);
+
   emit SymbolsChanged();
   Update();
 }
@@ -670,28 +702,6 @@ void CodeViewWidget::OnFollowBranch()
   SetAddress(branch_addr, SetAddressUpdate::WithUpdate);
 }
 
-void CodeViewWidget::OnRenameSymbol()
-{
-  const u32 addr = GetContextAddress();
-
-  Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(addr);
-
-  if (!symbol)
-    return;
-
-  bool good;
-  QString name =
-      QInputDialog::getText(this, tr("Rename symbol"), tr("Symbol name:"), QLineEdit::Normal,
-                            QString::fromStdString(symbol->name), &good);
-
-  if (good && !name.isEmpty())
-  {
-    symbol->Rename(name.toStdString());
-    emit SymbolsChanged();
-    Update();
-  }
-}
-
 void CodeViewWidget::OnSelectionChanged()
 {
   if (m_address == PowerPC::ppcState.pc)
@@ -703,54 +713,6 @@ void CodeViewWidget::OnSelectionChanged()
   {
     setStyleSheet(QString{});
   }
-}
-
-void CodeViewWidget::OnSetSymbolSize()
-{
-  const u32 addr = GetContextAddress();
-
-  Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(addr);
-
-  if (!symbol)
-    return;
-
-  bool good;
-  int size =
-      QInputDialog::getInt(this, tr("Rename symbol"),
-                           tr("Set symbol size (%1):").arg(QString::fromStdString(symbol->name)),
-                           symbol->size, 1, 0xFFFF, 1, &good);
-
-  if (!good)
-    return;
-
-  PPCAnalyst::ReanalyzeFunction(symbol->address, *symbol, size);
-  emit SymbolsChanged();
-  Update();
-}
-
-void CodeViewWidget::OnSetSymbolEndAddress()
-{
-  const u32 addr = GetContextAddress();
-
-  Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(addr);
-
-  if (!symbol)
-    return;
-
-  bool good;
-  QString name = QInputDialog::getText(
-      this, tr("Set symbol end address"),
-      tr("Symbol (%1) end address:").arg(QString::fromStdString(symbol->name)), QLineEdit::Normal,
-      QStringLiteral("%1").arg(addr + symbol->size, 8, 16, QLatin1Char('0')), &good);
-
-  u32 address = name.toUInt(&good, 16);
-
-  if (!good)
-    return;
-
-  PPCAnalyst::ReanalyzeFunction(symbol->address, *symbol, address - symbol->address);
-  emit SymbolsChanged();
-  Update();
 }
 
 void CodeViewWidget::OnReplaceInstruction()

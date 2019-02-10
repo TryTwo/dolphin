@@ -77,12 +77,10 @@ private:
   void OnCopyHex();
   void OnCopyTargetAddress();
   void OnBreakpointTargetAddress();
-  void OnRenameSymbol();
   void OnSelectionChanged();
-  void OnSetSymbolSize();
-  void OnSetSymbolEndAddress();
   void OnRunToHere();
   void OnAddFunction();
+  void OnEditSymbol();
   void OnPPCComparison();
   void OnInsertBLR();
   void OnInsertNOP();
