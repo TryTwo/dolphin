@@ -33,6 +33,7 @@ public:
   explicit MemoryViewWidget(QWidget* parent = nullptr);
 
   void Update();
+  void AutoUpdate();
   const u32 PCTargetMemory();
   void ToggleBreakpoint();
   void ToggleRowBreakpoint(bool row);
@@ -66,6 +67,8 @@ private:
   void OnEditNote();
   void OnDeleteNote();
 
+  QTimer* m_timer;
+  QAction* m_auto_update_action;
   Type m_type = Type::U8;
   BPType m_bp_type = BPType::ReadWrite;
   bool m_do_log = true;

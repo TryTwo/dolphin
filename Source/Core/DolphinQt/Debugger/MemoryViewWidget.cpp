@@ -10,6 +10,7 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QScrollBar>
+#include <qtimer.h>
 
 #include <cctype>
 #include <cmath>
@@ -35,15 +36,29 @@ MemoryViewWidget::MemoryViewWidget(QWidget* parent) : QTableWidget(parent)
   verticalHeader()->hide();
   setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   setShowGrid(false);
+  setStyleSheet(
+      QStringLiteral("QTableView {selection-background-color: #0090FF; selection-color:#FFFFFF}"));
   setAlternatingRowColors(true);
 
   setFont(Settings::Instance().GetDebugFont());
+
+  m_timer = new QTimer;
+  m_timer->setInterval(600);
+  m_auto_update_action = new QAction(tr("Auto update memory values (600ms)"), this);
+  m_auto_update_action->setCheckable(true);
 
   connect(&Settings::Instance(), &Settings::DebugFontChanged, this, &QWidget::setFont);
   connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, [this] { Update(); });
   connect(this, &MemoryViewWidget::customContextMenuRequested, this,
           &MemoryViewWidget::OnContextMenu);
   connect(&Settings::Instance(), &Settings::ThemeChanged, this, &MemoryViewWidget::Update);
+  connect(m_auto_update_action, &QAction::toggled, [this](bool checked) {
+    if (checked)
+      m_timer->start();
+    else
+      m_timer->stop();
+  });
+  connect(m_timer, &QTimer::timeout, this, &MemoryViewWidget::AutoUpdate);
 
   // Update on stepping. Is there a better way than this?
   connect(Host::GetInstance(), &Host::UpdateDisasmDialog, this, [this] {
@@ -101,11 +116,11 @@ void MemoryViewWidget::Update()
   for (int i = 0; i < rows; i++)
   {
     // Two column mode has rows increment by 0x4 instead of 0x10
-    u32 rowmod = ((GetColumnCount(m_type) == 2) ? 4 : 16);
+    const u32 rowmod = ((GetColumnCount(m_type) == 2) ? 4 : 16);
     u32 addr = m_address - (rowCount() / 2) * rowmod + i * rowmod;
 
     auto* bp_item = new QTableWidgetItem;
-    bp_item->setFlags(Qt::ItemIsEnabled);
+    bp_item->setFlags(Qt::NoItemFlags);
     bp_item->setData(Qt::UserRole, addr);
 
     setItem(i, 0, bp_item);
@@ -113,7 +128,7 @@ void MemoryViewWidget::Update()
     auto* addr_item = new QTableWidgetItem(QStringLiteral("%1").arg(addr, 8, 16, QLatin1Char('0')));
 
     addr_item->setData(Qt::UserRole, addr);
-    addr_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+    addr_item->setFlags(Qt::ItemIsSelectable);
 
     setItem(i, 1, addr_item);
 
@@ -127,7 +142,7 @@ void MemoryViewWidget::Update()
       for (int c = 2; c < columnCount(); c++)
       {
         auto* item = new QTableWidgetItem(QStringLiteral("-"));
-        item->setFlags(Qt::ItemIsEnabled);
+        item->setFlags(Qt::NoItemFlags);
         item->setData(Qt::UserRole, addr);
 
         setItem(i, c, item);
@@ -153,93 +168,35 @@ void MemoryViewWidget::Update()
     description_item->setBackground(QColor(color));
 
     description_item->setForeground(Qt::blue);
-    description_item->setFlags(Qt::ItemIsEnabled);
+    description_item->setFlags(Qt::NoItemFlags);
 
     setItem(i, columnCount() - 1, description_item);
 
     bool row_breakpoint = true;
+    const int columns = GetColumnCount(m_type);
 
-    auto update_values = [&](auto value_to_string) {
-      const int columns = GetColumnCount(m_type);
-      for (int c = 0; c < columns; c++)
-      {
-        auto* hex_item = new QTableWidgetItem;
-        hex_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-        u32 address = addr + c * (16 / columns);
-
-        // Alternate view requires two columns with the same address
-        if (columns == 2)
-          address = addr;
-        if (PowerPC::memchecks.OverlapsMemcheck(address, 16 / ((columns == 2) ? 4 : columns)))
-          hex_item->setBackground(Qt::red);
-        else
-          row_breakpoint = false;
-
-        if (address == PC_Target)
-          hex_item->setBackground(Qt::cyan);
-
-        setItem(i, 2 + c, hex_item);
-
-        if (PowerPC::HostIsRAMAddress(address))
-        {
-          // 2 Column mode: Report hex value in first column.
-          if (columns == 2 && c == 0)
-          {
-            hex_item->setText(
-                QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16, QLatin1Char('0')));
-          }
-          else
-          {
-            hex_item->setText(value_to_string(address));
-          }
-
-          hex_item->setData(Qt::UserRole, address);
-        }
-        else
-        {
-          hex_item->setFlags(0);
-          hex_item->setText(QStringLiteral("-"));
-        }
-      }
-    };
-
-    switch (m_type)
+    for (int c = 0; c < columns; c++)
     {
-    case Type::U8:
-      update_values([](u32 address) {
-        const u8 value = PowerPC::HostRead_U8(address);
-        return QStringLiteral("%1").arg(value, 2, 16, QLatin1Char('0'));
-      });
-      break;
-    case Type::ASCII:
-    case Type::U32xASCII:
-      update_values([](u32 address) {
-        QString asciistring = QStringLiteral("");
-        // Group ASCII in sets of four.
-        for (u32 i = 0; i < 4; i++)
-        {
-          char value = PowerPC::HostRead_U8(address + i);
-          asciistring.append(std::isprint(value) ? QChar::fromLatin1(value) : QStringLiteral("."));
-        }
-        return asciistring;
-      });
-      break;
-    case Type::U16:
-      update_values([](u32 address) {
-        const u16 value = PowerPC::HostRead_U16(address);
-        return QStringLiteral("%1").arg(value, 4, 16, QLatin1Char('0'));
-      });
-      break;
-    case Type::U32:
-      update_values([](u32 address) {
-        const u32 value = PowerPC::HostRead_U32(address);
-        return QStringLiteral("%1").arg(value, 8, 16, QLatin1Char('0'));
-      });
-      break;
-    case Type::Float32:
-    case Type::U32xFloat32:
-      update_values([](u32 address) { return QString::number(PowerPC::HostRead_F32(address)); });
-      break;
+      auto* hex_item = new QTableWidgetItem;
+      hex_item->setFlags(Qt::ItemIsSelectable);
+      const u32 address = (columns == 2) ? addr : addr + c * (16 / columns);
+
+      if (PowerPC::memchecks.OverlapsMemcheck(address, 16 / ((columns == 2) ? 4 : columns)))
+      {
+        hex_item->setBackgroundColor(Qt::red);
+      }
+      else
+      {
+        hex_item->setBackgroundColor(QColor(0xFFFFFF));
+        row_breakpoint = false;
+      }
+      if (address == PC_Target)
+        hex_item->setBackground(Qt::cyan);
+
+      setItem(i, 2 + c, hex_item);
+
+      if (PowerPC::HostIsRAMAddress(address))
+        hex_item->setData(Qt::UserRole, address);
     }
 
     if (row_breakpoint)
@@ -250,8 +207,9 @@ void MemoryViewWidget::Update()
     }
   }
 
-  setColumnWidth(0, fonth + 3);
+  AutoUpdate();
 
+  setColumnWidth(0, 24 + 5);
   for (int i = 1; i < columnCount(); i++)
   {
     resizeColumnToContents(i);
@@ -259,11 +217,103 @@ void MemoryViewWidget::Update()
     setColumnWidth(i, columnWidth(i) * 1.1);
   }
 
-  // Clearly denote which row the address box points to. Could look better than this.
-  item(rows / 2, 0)->setBackground(Qt::lightGray);
-
   viewport()->update();
   update();
+}
+
+void MemoryViewWidget::AutoUpdate()
+{
+  if (Core::GetState() != Core::State::Paused && Core::GetState() != Core::State::Running)
+    return;
+
+  Core::RunAsCPUThread([&] {
+    const int columns = GetColumnCount(m_type);
+
+    for (int i = 0; i < rowCount(); i++)
+    {
+      const u32 rowmod = ((GetColumnCount(m_type) == 2) ? 4 : 16);
+      const u32 addr = m_address - (rowCount() / 2) * rowmod + i * rowmod;
+
+      auto update_values = [&](auto value_to_string) {
+        for (int c = 0; c < GetColumnCount(m_type); c++)
+        {
+          auto* hex_item = item(i, 2 + c);
+          const u32 address = (columns == 2) ? addr : addr + c * (16 / columns);
+
+          if (PowerPC::HostIsRAMAddress(address))
+          {
+            QString value = value_to_string(address);
+
+            if (columns == 2 && c == 0)
+            {
+              hex_item->setText(QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16,
+                                                         QLatin1Char('0')));
+            }
+            else if (hex_item->text() != value)
+            {
+              if (!hex_item->text().isEmpty())
+                hex_item->setBackgroundColor(QColor(0x77FFFF));
+
+              hex_item->setText(value);
+            }
+            else if (hex_item->backgroundColor() != QColor(0xFFFFFF) &&
+                     hex_item->backgroundColor() != QColor(Qt::red))
+            {
+              hex_item->setBackgroundColor(hex_item->backgroundColor().lighter(107));
+            }
+            else if (PowerPC::memchecks.OverlapsMemcheck(address, 16 / GetColumnCount(m_type)))
+            {
+              hex_item->setBackground(Qt::red);
+            }
+          }
+          else
+          {
+            hex_item->setText(QStringLiteral("-"));
+          }
+        }
+      };
+
+      switch (m_type)
+      {
+      case Type::U8:
+        update_values([](u32 address) {
+          const u8 value = PowerPC::HostRead_U8(address);
+          return QStringLiteral("%1").arg(value, 2, 16, QLatin1Char('0'));
+        });
+        break;
+      case Type::ASCII:
+      case Type::U32xASCII:
+        update_values([](u32 address) {
+          QString asciistring = QStringLiteral("");
+          // Group ASCII in sets of four.
+          for (u32 i = 0; i < 4; i++)
+          {
+            char value = PowerPC::HostRead_U8(address + i);
+            asciistring.append(std::isprint(value) ? QChar::fromLatin1(value) :
+                                                     QStringLiteral("."));
+          }
+          return asciistring;
+        });
+        break;
+      case Type::U16:
+        update_values([](u32 address) {
+          const u16 value = PowerPC::HostRead_U16(address);
+          return QStringLiteral("%1").arg(value, 4, 16, QLatin1Char('0'));
+        });
+        break;
+      case Type::U32:
+        update_values([](u32 address) {
+          const u32 value = PowerPC::HostRead_U32(address);
+          return QStringLiteral("%1").arg(value, 8, 16, QLatin1Char('0'));
+        });
+        break;
+      case Type::Float32:
+      case Type::U32xFloat32:
+        update_values([](u32 address) { return QString::number(PowerPC::HostRead_F32(address)); });
+        break;
+      }
+    }
+  });
 }
 
 const u32 MemoryViewWidget::PCTargetMemory()
@@ -411,11 +461,17 @@ void MemoryViewWidget::mousePressEvent(QMouseEvent* event)
 
     if (event->modifiers() & Qt::ShiftModifier)
     {
+      clearSelection();
+      item->setSelected(true);
+
       QString setaddr = QStringLiteral("%1").arg(addr, 8, 16, QLatin1Char('0'));
       emit SendSearchValue(setaddr);
     }
     else if (event->modifiers() & Qt::ControlModifier)
     {
+      clearSelection();
+      item->setSelected(true);
+
       const auto length = 32 / ((GetColumnCount(m_type) == 2) ? 4 : GetColumnCount(m_type));
       u64 value = PowerPC::HostRead_U64(addr);
       QString setvalue = QStringLiteral("%1").arg(value, 16, 16, QLatin1Char('0')).left(length);
@@ -432,8 +488,10 @@ void MemoryViewWidget::mousePressEvent(QMouseEvent* event)
         SetAddress(addr & 0xFFFFFFFC);
       else
         SetAddress(addr & 0xFFFFFFF0);
+
+      Update();
     }
-    Update();
+
     break;
   default:
     break;
@@ -541,6 +599,10 @@ void MemoryViewWidget::OnContextMenu()
   menu->addSeparator();
 
   menu->addAction(tr("Toggle Breakpoint"), this, &MemoryViewWidget::ToggleBreakpoint);
+
+  menu->addSeparator();
+
+  menu->addAction(m_auto_update_action);
 
   menu->exec(QCursor::pos());
 }
