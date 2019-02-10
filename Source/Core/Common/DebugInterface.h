@@ -77,8 +77,10 @@ public:
   virtual void SetPC(u32 /*address*/) {}
   virtual void Step() {}
   virtual void RunToBreakpoint() {}
-  virtual u32 GetColor(u32 /*address*/) const { return 0xFFFFFFFF; }
+  virtual int GetNoteColor(u32 /*address*/) const { return 0xFFFFFF; }
+  virtual int GetColor(u32 /*address*/) const { return 0xFFFFFF; }
   virtual std::string GetDescription(u32 /*address*/) const = 0;
+  virtual void UpdateNote(u32 /*address*/, u32 /*size*/, std::string /*name*/){};
   virtual void Clear() = 0;
 };
 }  // namespace Common

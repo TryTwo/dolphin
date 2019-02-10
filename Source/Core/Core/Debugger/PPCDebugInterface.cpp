@@ -362,6 +362,27 @@ u32 PPCDebugInterface::GetColor(u32 address) const
   };
   return colors[symbol->index % colors.size()];
 }
+
+void PPCDebugInterface::UpdateNote(unsigned int address, unsigned int size, std::string name)
+{
+  g_symbolDB.AddKnownNote(address, size, name);
+  g_symbolDB.DetermineNoteLayers();
+}
+
+int PPCDebugInterface::GetNoteColor(unsigned int address)
+{
+  if (!IsAlive())
+    return 0xFFFFFF;
+  if (!PowerPC::HostIsRAMAddress(address))
+    return 0xeeeeee;
+  static const int colors[3] = {
+      0xcedeee,  // light blue
+      0xcceecc,  // light green
+      0xeeeece,  // light yellow
+  };
+  Common::Note* note = g_symbolDB.GetNoteFromAddr(address);
+  return colors[note->layer % 3];
+}
 // =============
 
 std::string PPCDebugInterface::GetDescription(u32 address) const

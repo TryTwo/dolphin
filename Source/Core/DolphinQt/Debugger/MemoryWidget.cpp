@@ -12,6 +12,8 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
@@ -26,7 +28,8 @@
 #include "Core/ConfigManager.h"
 #include "Core/HW/DSP.h"
 #include "Core/HW/Memmap.h"
-#include "Core/HW/AddressSpace.h"
+#include "Core/PowerPC/PPCSymbolDB.h"
+#include "Core/PowerPC/PowerPC.h"
 #include "DolphinQt/Debugger/MemoryViewWidget.h"
 #include "DolphinQt/Host.h"
 #include "DolphinQt/QtUtils/ModalMessageBox.h"
@@ -198,6 +201,17 @@ void MemoryWidget::CreateWidgets()
   conversion_layout->addWidget(m_float_convert);
   conversion_layout->addWidget(m_hex_convert);
 
+  // Notes
+  m_note_group = new QGroupBox(tr("Notes"));
+  auto* note_layout = new QVBoxLayout;
+  m_note_list = new QListWidget;
+  m_search_notes = new QLineEdit;
+  m_search_notes->setPlaceholderText(tr("Filter Note List"));
+
+  m_note_group->setLayout(note_layout);
+  note_layout->addWidget(m_note_list);
+  note_layout->addWidget(m_search_notes);
+
   // Sidebar
   auto* sidebar = new QWidget;
   auto* sidebar_layout = new QVBoxLayout;
@@ -218,6 +232,7 @@ void MemoryWidget::CreateWidgets()
   sidebar_layout->addWidget(search_group);
   sidebar_layout->addWidget(datatype_group);
   sidebar_layout->addWidget(bp_group);
+  sidebar_layout->addWidget(m_note_group);
   sidebar_layout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
   sidebar_layout->addLayout(conversion_layout);
 
@@ -239,6 +254,7 @@ void MemoryWidget::CreateWidgets()
   auto* widget = new QWidget;
   widget->setLayout(layout);
   setWidget(widget);
+  UpdateNotes();
 }
 
 void MemoryWidget::ConnectWidgets()
@@ -277,6 +293,9 @@ void MemoryWidget::ConnectWidgets()
   connect(m_memory_view, &MemoryViewWidget::SendSearchValue, m_search_address_offset,
           &QLineEdit::clear);
   connect(m_memory_view, &MemoryViewWidget::SendDataValue, m_data_edit, &QLineEdit::setText);
+  connect(m_note_list, &QListWidget::itemClicked, this, &MemoryWidget::OnSelectNote);
+  connect(m_memory_view, &MemoryViewWidget::NotesChanged, this, &MemoryWidget::UpdateNotes);
+  connect(m_search_notes, &QLineEdit::textChanged, this, &MemoryWidget::OnSearchNotes);
   connect(m_memory_view, &MemoryViewWidget::ShowCode, this, &MemoryWidget::ShowCode);
 }
 
@@ -600,6 +619,55 @@ void MemoryWidget::OnSetValue()
   }
 
   Update();
+}
+
+void MemoryWidget::OnSearchNotes()
+{
+  m_note_filter = m_search_notes->text();
+  UpdateNotes();
+}
+
+void MemoryWidget::OnSelectNote()
+{
+  const auto items = m_note_list->selectedItems();
+  if (items.isEmpty())
+    return;
+
+  const u32 address = items[0]->data(Qt::UserRole).toUInt();
+
+  SetAddress(address);
+}
+
+void MemoryWidget::UpdateNotes()
+{
+  if (g_symbolDB.Notes().empty())
+  {
+    m_note_group->hide();
+    return;
+  }
+
+  m_note_group->show();
+
+  QString selection = m_note_list->selectedItems().isEmpty() ?
+                          QStringLiteral("") :
+                          m_note_list->selectedItems()[0]->text();
+  m_note_list->clear();
+
+  for (const auto& note : g_symbolDB.Notes())
+  {
+    QString name = QString::fromStdString(note.second.name);
+
+    auto* item = new QListWidgetItem(name);
+    if (name == selection)
+      item->setSelected(true);
+
+    item->setData(Qt::UserRole, note.second.address);
+
+    if (name.toUpper().indexOf(m_note_filter.toUpper()) != -1)
+      m_note_list->addItem(item);
+  }
+
+  m_note_list->sortItems();
 }
 
 static void DumpArray(const std::string& filename, const u8* data, size_t length)

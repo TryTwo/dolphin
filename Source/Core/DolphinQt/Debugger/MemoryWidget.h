@@ -12,8 +12,10 @@
 
 class MemoryViewWidget;
 class QCheckBox;
+class QGroupBox;
 class QLabel;
 class QLineEdit;
+class QListWidget;
 class QPushButton;
 class QRadioButton;
 class QShowEvent;
@@ -50,6 +52,10 @@ private:
   void ValidateSearchValue();
 
   void OnSetValue();
+
+  void OnSearchNotes();
+  void OnSelectNote();
+  void UpdateNotes();
 
   void OnDumpMRAM();
   void OnDumpExRAM();
@@ -103,6 +109,12 @@ private:
   QRadioButton* m_bp_read_only;
   QRadioButton* m_bp_write_only;
   QCheckBox* m_bp_log_check;
+
+  QGroupBox* m_note_group;
+  QLineEdit* m_search_notes;
+  QListWidget* m_note_list;
+  QString m_note_filter;
+
   // Float to Hex conversion
   QLineEdit* m_float_convert;
   QLineEdit* m_hex_convert;

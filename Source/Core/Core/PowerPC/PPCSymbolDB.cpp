@@ -87,6 +87,47 @@ void PPCSymbolDB::AddKnownSymbol(u32 startAddr, u32 size, const std::string& nam
   }
 }
 
+void PPCSymbolDB::AddKnownNote(u32 startAddr, u32 size, const std::string& name,
+                               Common::Symbol::Type type)
+{
+  auto iter = m_notes.find(startAddr);
+
+  if (iter != m_notes.end())
+  {
+    // already got it, let's just update name, checksum & size to be sure.
+    Common::Note* tempfunc = &iter->second;
+    tempfunc->name = name;
+    tempfunc->size = size;
+  }
+  else
+  {
+    Common::Note tf;
+    tf.name = name;
+    tf.address = startAddr;
+    tf.size = size;
+
+    m_notes[startAddr] = tf;
+  }
+}
+
+void PPCSymbolDB::DetermineNoteLayers()
+{
+  if (m_notes.empty())
+    return;
+
+  for (auto& note : m_notes)
+    note.second.layer = 0;
+
+  for (auto iter = m_notes.begin(); iter != m_notes.end(); ++iter)
+  {
+    const u32 range = iter->second.address + iter->second.size;
+    auto search = m_notes.upper_bound(range);
+
+    while (--search != iter)
+      search->second.layer += 1;
+  }
+}
+
 Common::Symbol* PPCSymbolDB::GetSymbolFromAddr(u32 addr)
 {
   auto it = m_functions.lower_bound(addr);
@@ -100,10 +141,48 @@ Common::Symbol* PPCSymbolDB::GetSymbolFromAddr(u32 addr)
   // Otherwise, check whether the address is within the bounds of a symbol.
   if (it != m_functions.begin())
     --it;
+
   if (addr >= it->second.address && addr < it->second.address + it->second.size)
     return &it->second;
 
   return nullptr;
+}
+
+Common::Note* PPCSymbolDB::GetNoteFromAddr(u32 addr)
+{
+  if (m_notes.empty())
+    return nullptr;
+
+  auto itn = m_notes.lower_bound(addr);
+
+  // If the address is exactly the start address of a symbol, we're done.
+  if (itn->second.address == addr)
+    return &itn->second;
+
+  // Otherwise, check whether the address is within the bounds of a symbol.
+  if (itn == m_notes.begin())
+    return nullptr;
+
+  do
+  {
+    --itn;
+
+    if (addr >= itn->second.address && addr < itn->second.address + itn->second.size)
+      return &itn->second;
+
+  } while (itn != m_notes.begin() && itn->second.layer > 0);
+
+  return nullptr;
+}
+
+void PPCSymbolDB::DeleteFunction(u32 startAddress)
+{
+  m_functions.erase(startAddress);
+}
+
+void PPCSymbolDB::DeleteNote(u32 startAddress)
+{
+  m_notes.erase(startAddress);
 }
 
 std::string PPCSymbolDB::GetDescription(u32 addr)
@@ -341,6 +420,7 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
       // some entries in the table have a function name followed by " (entry of " followed by a
       // container name, followed by ")"
       // instead of a space followed by a number followed by a space followed by a name
+      const std::string stripped_line = StripSpaces(line);
       if (length > 27 && line[27] != ' ' && strstr(line, "(entry of "))
       {
         alignment = 0;
@@ -358,6 +438,11 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
             strcpy(name, container);
           }
         }
+      }
+      else if (std::count(stripped_line.begin(), stripped_line.end(), ' ') == 2)
+      {
+        sscanf(line, "%08x %08x %511s", &address, &size, name);
+        vaddress = address;
       }
       else
       {
@@ -403,8 +488,10 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
         ++good_count;
         if (section_name == ".text" || section_name == ".init")
           AddKnownSymbol(vaddress, size, name, Common::Symbol::Type::Function);
-        else
+        else if (section_name == ".data")
           AddKnownSymbol(vaddress, size, name, Common::Symbol::Type::Data);
+        else if (section_name == ".note")
+          AddKnownNote(vaddress, size, name);
       }
       else
       {
@@ -414,6 +501,8 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
   }
 
   Index();
+  DetermineNoteLayers();
+
   NOTICE_LOG(SYMBOLS, "%d symbols loaded, %d symbols ignored.", good_count, bad_count);
   return true;
 }
@@ -427,14 +516,21 @@ bool PPCSymbolDB::SaveSymbolMap(const std::string& filename) const
 
   std::vector<const Common::Symbol*> function_symbols;
   std::vector<const Common::Symbol*> data_symbols;
+  std::vector<const Common::Note*> note_symbols;
 
   for (const auto& function : m_functions)
   {
     const Common::Symbol& symbol = function.second;
     if (symbol.type == Common::Symbol::Type::Function)
       function_symbols.push_back(&symbol);
-    else
+    else if (symbol.type == Common::Symbol::Type::Data)
       data_symbols.push_back(&symbol);
+  }
+
+  for (const auto& note : m_notes)
+  {
+    const Common::Note& note_temp = note.second;
+    note_symbols.push_back(&note_temp);
   }
 
   // Write .text section
@@ -454,7 +550,14 @@ bool PPCSymbolDB::SaveSymbolMap(const std::string& filename) const
     fprintf(f.GetHandle(), "%08x %08x %08x %i %s\n", symbol->address, symbol->size, symbol->address,
             0, symbol->name.c_str());
   }
-
+  // Write .note section
+  fprintf(f.GetHandle(), "\n.note section layout\n");
+  for (const auto& symbol : note_symbols)
+  {
+    // Write symbol address, size, virtual address, alignment, name
+    fprintf(f.GetHandle(), "%08x %08x %08x %i %s\n", symbol->address, symbol->size, symbol->address,
+            0, symbol->name.c_str());
+  }
   return true;
 }
 

@@ -18,8 +18,8 @@ class EditSymbolDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit EditSymbolDialog(QWidget* parent, std::string& symbol_name, u32& symbol_size,
-                            const u32 symbol_address);
+  explicit EditSymbolDialog(QWidget* parent, const u32 symbol_address, u32& symbol_size,
+                            std::string& symbol_name);
 
 private:
   void CreateWidgets();

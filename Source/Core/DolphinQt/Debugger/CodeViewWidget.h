@@ -48,6 +48,7 @@ signals:
   void RequestPPCComparison(u32 addr);
   void ShowMemory(u32 address);
   void SymbolsChanged();
+  void NotesChanged();
   void BreakpointsChanged();
 
 private:
@@ -81,7 +82,11 @@ private:
   void OnRunToHere();
   void OnAddFunction();
   void OnEditSymbol();
+  void OnDeleteSymbol();
+  void OnAddNote();
   void OnPPCComparison();
+  void OnEditNote();
+  void OnDeleteNote();
   void OnInsertBLR();
   void OnInsertNOP();
   void OnReplaceInstruction();

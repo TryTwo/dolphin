@@ -275,8 +275,7 @@ void CodeViewWidget::Update()
 
   for (int i = 0; i < rowCount(); i++)
   {
-    const u32 addr = AddressForRow(i);
-    const u32 color = PowerPC::debug_interface.GetColor(addr);
+    u32 addr = m_address - ((rowCount() / 2) * 4) + i * 4;
     auto* bp_item = new QTableWidgetItem;
     auto* addr_item = new QTableWidgetItem(QStringLiteral("%1").arg(addr, 8, 16, QLatin1Char('0')));
 
@@ -285,7 +284,19 @@ void CodeViewWidget::Update()
 
     std::string ins = (split == std::string::npos ? disas : disas.substr(0, split));
     std::string param = (split == std::string::npos ? "" : disas.substr(split + 1));
-    std::string desc = PowerPC::debug_interface.GetDescription(addr);
+    std::string desc;
+    int color = 0xFFFFFF;
+    const Common::Note* note = g_symbolDB.GetNoteFromAddr(addr);
+    if (note == nullptr)
+    {
+      desc = PowerPC::debug_interface.GetDescription(addr);
+      color = PowerPC::debug_interface.GetColor(addr);
+    }
+    else
+    {
+      desc = note->name;
+      color = PowerPC::debug_interface.GetNoteColor(addr);
+    }
 
     // Adds whitespace and a minimum size to ins and param. Helps to prevent frequent resizing while
     // scrolling.
@@ -540,6 +551,14 @@ void CodeViewWidget::OnContextMenu()
       menu->addAction(tr("&Add function symbol"), this, &CodeViewWidget::OnAddFunction);
   auto* symbol_edit_action =
       menu->addAction(tr("&Edit symbol"), this, &CodeViewWidget::OnEditSymbol);
+  auto* symbol_delete_action =
+      menu->addAction(tr("&Delete symbol"), this, &CodeViewWidget::OnDeleteSymbol);
+
+  menu->addSeparator();
+
+  menu->addAction(tr("Add Note"), this, &CodeViewWidget::OnAddNote);
+  menu->addAction(tr("Edit Note"), this, &CodeViewWidget::OnEditNote);
+  menu->addAction(tr("Delete Note"), this, &CodeViewWidget::OnDeleteNote);
 
   menu->addSeparator();
 
@@ -560,6 +579,7 @@ void CodeViewWidget::OnContextMenu()
     action->setEnabled(running);
 
   symbol_edit_action->setEnabled(has_symbol);
+  symbol_delete_action->setEnabled(has_symbol);
 
   restore_action->setEnabled(running && PowerPC::debug_interface.HasEnabledPatch(addr));
 
@@ -661,7 +681,7 @@ void CodeViewWidget::OnEditSymbol()
   u32 size = symbol->size;
   const u32 symbol_address = symbol->address;
 
-  EditSymbolDialog* dialog = new EditSymbolDialog(this, name, size, symbol_address);
+  EditSymbolDialog* dialog = new EditSymbolDialog(this, symbol_address, size, name);
 
   if (dialog->exec() != QDialog::Accepted)
     return;
@@ -673,6 +693,98 @@ void CodeViewWidget::OnEditSymbol()
     PPCAnalyst::ReanalyzeFunction(symbol->address, *symbol, size);
 
   emit SymbolsChanged();
+  Update();
+}
+
+void CodeViewWidget::OnDeleteSymbol()
+{
+  const u32 addr = GetContextAddress();
+  Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(addr);
+  if (symbol == nullptr)
+    return;
+
+  int confirm =
+      QMessageBox::warning(this, tr("Delete Function Symbol"),
+                           tr("Delete function symbol: ") + QString::fromStdString(symbol->name) +
+                               tr("\nat ") + QString::number(addr, 16) + tr("?"),
+                           QMessageBox::Ok | QMessageBox::Cancel);
+
+  if (confirm != QMessageBox::Ok)
+    return;
+
+  g_symbolDB.DeleteFunction(symbol->address);
+
+  emit SymbolsChanged();
+  Update();
+}
+
+void CodeViewWidget::OnAddNote()
+{
+  const u32 note_address = GetContextAddress();
+  std::string name = "";
+  u32 size = 4;
+
+  EditSymbolDialog* dialog = new EditSymbolDialog(this, note_address, size, name);
+
+  if (dialog->exec() != QDialog::Accepted)
+    return;
+
+  PowerPC::debug_interface.UpdateNote(note_address, size, name);
+  emit NotesChanged();
+  Update();
+}
+
+void CodeViewWidget::OnEditNote()
+{
+  const u32 context_address = GetContextAddress();
+  Common::Note* note = g_symbolDB.GetNoteFromAddr(context_address);
+
+  std::string name = "";
+  u32 size = 4;
+  u32 note_address;
+
+  if (note != nullptr)
+  {
+    name = note->name;
+    size = note->size;
+    note_address = note->address;
+  }
+  else
+  {
+    note_address = context_address;
+  }
+
+  EditSymbolDialog* dialog = new EditSymbolDialog(this, note_address, size, name);
+
+  if (dialog->exec() != QDialog::Accepted)
+    return;
+
+  if (note == nullptr || note->name != name || note->size != size)
+    PowerPC::debug_interface.UpdateNote(note_address, size, name);
+
+  emit NotesChanged();
+  Update();
+}
+
+void CodeViewWidget::OnDeleteNote()
+{
+  const u32 context_address = GetContextAddress();
+  Common::Note* note = g_symbolDB.GetNoteFromAddr(context_address);
+
+  if (note == nullptr)
+    return;
+
+  int confirm = QMessageBox::warning(this, tr("Delete Note"),
+                                     tr("Delete Note: ") + QString::fromStdString(note->name) +
+                                         tr("at ") + QString::number(context_address, 16) + tr("?"),
+                                     QMessageBox::Ok | QMessageBox::Cancel);
+
+  if (confirm != QMessageBox::Ok)
+    return;
+
+  g_symbolDB.DeleteNote(note->address);
+
+  emit NotesChanged();
   Update();
 }
 

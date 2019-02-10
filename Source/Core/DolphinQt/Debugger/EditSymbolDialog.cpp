@@ -13,8 +13,8 @@
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QPushButton>
 
-EditSymbolDialog::EditSymbolDialog(QWidget* parent, std::string& symbol_name, u32& symbol_size,
-                                   const u32 symbol_address)
+EditSymbolDialog::EditSymbolDialog(QWidget* parent, const u32 symbol_address, u32& symbol_size,
+                                   std::string& symbol_name)
     : QDialog(parent), m_symbol_name(symbol_name), m_symbol_size(symbol_size),
       m_symbol_address(symbol_address)
 {

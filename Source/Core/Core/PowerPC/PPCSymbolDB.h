@@ -23,8 +23,14 @@ public:
   Common::Symbol* AddFunction(u32 start_addr) override;
   void AddKnownSymbol(u32 startAddr, u32 size, const std::string& name,
                       Common::Symbol::Type type = Common::Symbol::Type::Function);
+  void AddKnownNote(u32 startAddr, u32 size, const std::string& name,
+                    Common::Symbol::Type type = Common::Symbol::Type::Note);
 
   Common::Symbol* GetSymbolFromAddr(u32 addr) override;
+  Common::Note* GetNoteFromAddr(u32 addr);
+  void DetermineNoteLayers();
+  void DeleteFunction(u32 startAddress);
+  void DeleteNote(u32 startAddress);
 
   std::string GetDescription(u32 addr);
 

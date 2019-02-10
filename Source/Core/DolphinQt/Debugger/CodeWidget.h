@@ -17,7 +17,6 @@ class QLineEdit;
 class QShowEvent;
 class QSplitter;
 class QListWidget;
-class QTableWidget;
 class QPushButton;
 
 namespace Common
@@ -47,6 +46,7 @@ public:
 
   void Update();
   void UpdateSymbols();
+
 signals:
   void BreakpointsChanged();
   void RequestPPCComparison(u32 addr);
@@ -58,10 +58,12 @@ private:
   void UpdateCallstack();
   void UpdateFunctionCalls(const Common::Symbol* symbol);
   void UpdateFunctionCallers(const Common::Symbol* symbol);
+  void UpdateNotes();
 
   void OnSearchAddress();
   void OnSearchSymbols();
   void OnSelectSymbol();
+  void OnSelectNote();
   void OnSelectCallstack();
   void OnSelectFunctionCallers();
   void OnSelectFunctionCalls();
@@ -78,6 +80,7 @@ private:
   QPushButton* m_code_diff;
   QListWidget* m_callstack_list;
   QListWidget* m_symbols_list;
+  QListWidget* m_note_list;
   QListWidget* m_function_calls_list;
   QListWidget* m_function_callers_list;
   CodeViewWidget* m_code_view;

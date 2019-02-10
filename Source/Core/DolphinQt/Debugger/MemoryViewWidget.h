@@ -8,11 +8,6 @@
 
 #include "Common/CommonTypes.h"
 
-namespace AddressSpace
-{
-enum class Type;
-}
-
 class MemoryViewWidget : public QTableWidget
 {
   Q_OBJECT
@@ -42,8 +37,6 @@ public:
   void ToggleBreakpoint();
   void ToggleRowBreakpoint(bool row);
 
-  void SetAddressSpace(AddressSpace::Type address_space);
-  AddressSpace::Type GetAddressSpace() const;
   void SetType(Type type);
   void SetBPType(BPType type);
   void SetAddress(u32 address);
@@ -62,16 +55,20 @@ signals:
   void SendSearchValue(const QString);
   void SendDataValue(const QString);
   void ShowCode(u32 address);
+  void NotesChanged();
 
 private:
   void OnContextMenu();
   void OnCopyAddress();
   void OnCopyHex();
 
-  AddressSpace::Type m_address_space{};
+  void OnAddNote();
+  void OnEditNote();
+  void OnDeleteNote();
+
   Type m_type = Type::U8;
   BPType m_bp_type = BPType::ReadWrite;
   bool m_do_log = true;
   u32 m_context_address;
-  u32 m_address = 0;
+  u32 m_address = 0x80000000;
 };

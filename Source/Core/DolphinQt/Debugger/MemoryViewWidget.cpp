@@ -17,7 +17,10 @@
 #include "Core/Core.h"
 #include "Core/PowerPC/BreakPoints.h"
 #include "Core/PowerPC/MMU.h"
+#include "Core/PowerPC/PPCSymbolDB.h"
 #include "Core/PowerPC/PowerPC.h"
+
+#include "DolphinQt/Debugger/EditSymbolDialog.h"
 #include "DolphinQt/Host.h"
 #include "DolphinQt/Resources.h"
 #include "DolphinQt/Settings.h"
@@ -133,8 +136,21 @@ void MemoryViewWidget::Update()
       continue;
     }
 
-    auto* description_item =
-        new QTableWidgetItem(QString::fromStdString(PowerPC::debug_interface.GetDescription(addr)));
+    std::string desc;
+    int color = 0xFFFFFF;
+    const Common::Note* note = g_symbolDB.GetNoteFromAddr(addr);
+    if (note == nullptr)
+    {
+      desc = PowerPC::debug_interface.GetDescription(addr);
+    }
+    else
+    {
+      color = PowerPC::debug_interface.GetNoteColor(addr);
+      desc = note->name;
+    }
+
+    auto* description_item = new QTableWidgetItem(QString::fromStdString(desc));
+    description_item->setBackground(QColor(color));
 
     description_item->setForeground(Qt::blue);
     description_item->setFlags(Qt::ItemIsEnabled);
@@ -381,7 +397,11 @@ void MemoryViewWidget::mousePressEvent(QMouseEvent* event)
   if (item == nullptr)
     return;
 
-  const u32 addr = item->data(Qt::UserRole).toUInt();
+  bool good;
+  const u32 addr = item->data(Qt::UserRole).toUInt(&good);
+
+  if (!good)
+    return;
 
   m_context_address = addr;
 
@@ -438,6 +458,67 @@ void MemoryViewWidget::OnCopyHex()
       QStringLiteral("%1").arg(value, length * 2, 16, QLatin1Char('0')).left(length * 2));
 }
 
+void MemoryViewWidget::OnAddNote()
+{
+  u32 note_address = GetContextAddress();
+  note_address = note_address & 0xFFFFFFF0;
+  std::string name = "";
+  u32 size = 4;
+
+  EditSymbolDialog* dialog = new EditSymbolDialog(this, note_address, size, name);
+
+  if (dialog->exec() != QDialog::Accepted)
+    return;
+
+  PowerPC::debug_interface.UpdateNote(note_address, size, name);
+
+  emit NotesChanged();
+  Update();
+}
+
+void MemoryViewWidget::OnEditNote()
+{
+  u32 context_address = GetContextAddress();
+  context_address = context_address & 0xFFFFFFF0;
+  Common::Note* note = g_symbolDB.GetNoteFromAddr(context_address);
+
+  std::string name = "";
+  u32 size = 4;
+  u32 note_address;
+
+  if (note != nullptr)
+  {
+    name = note->name;
+    size = note->size;
+    note_address = note->address;
+  }
+  else
+  {
+    note_address = context_address;
+  }
+
+  EditSymbolDialog* dialog = new EditSymbolDialog(this, note_address, size, name);
+
+  if (dialog->exec() != QDialog::Accepted)
+    return;
+
+  if (note == nullptr || note->name != name || note->size != size)
+    PowerPC::debug_interface.UpdateNote(note_address, size, name);
+
+  emit NotesChanged();
+  Update();
+}
+
+void MemoryViewWidget::OnDeleteNote()
+{
+  u32 context_address = GetContextAddress();
+  context_address = context_address & 0xFFFFFFF0;
+  Common::Note* note = g_symbolDB.GetNoteFromAddr(context_address);
+  g_symbolDB.DeleteNote(note->address);
+  emit NotesChanged();
+  Update();
+}
+
 void MemoryViewWidget::OnContextMenu()
 {
   auto* menu = new QMenu(this);
@@ -451,6 +532,10 @@ void MemoryViewWidget::OnContextMenu()
 
   menu->addSeparator();
 
+  menu->addAction(tr("Add Note"), this, &MemoryViewWidget::OnAddNote);
+  menu->addAction(tr("Add or Edit Note"), this, &MemoryViewWidget::OnEditNote);
+  menu->addAction(tr("Delete Note"), this, &MemoryViewWidget::OnDeleteNote);
+  menu->addSeparator();
   menu->addAction(tr("Show in code"), this, [this] { emit ShowCode(GetContextAddress()); });
 
   menu->addSeparator();
