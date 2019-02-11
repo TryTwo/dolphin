@@ -200,7 +200,7 @@ MainWindow::MainWindow(std::unique_ptr<BootParameters> boot_parameters,
   setUnifiedTitleAndToolBarOnMac(true);
   setAcceptDrops(true);
   setAttribute(Qt::WA_NativeWindow);
-
+  setFocusPolicy(Qt::StrongFocus);
   InitControllers();
 
   CreateComponents();

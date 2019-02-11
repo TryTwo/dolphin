@@ -200,13 +200,13 @@ bool RenderWidget::event(QEvent* event)
       Core::SetState(Core::State::Running);
 
     emit FocusChanged(true);
-    break;
+    return true;
   case QEvent::WindowDeactivate:
     if (SConfig::GetInstance().m_PauseOnFocusLost && Core::GetState() == Core::State::Running)
       Core::SetState(Core::State::Paused);
-
+    m_mouse_timer->start(MOUSE_HIDE_DELAY);
     emit FocusChanged(false);
-    break;
+    return true;
   case QEvent::Resize:
   {
     const QResizeEvent* se = static_cast<QResizeEvent*>(event);
