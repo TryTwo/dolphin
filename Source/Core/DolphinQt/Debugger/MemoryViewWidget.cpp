@@ -209,7 +209,7 @@ void MemoryViewWidget::Update()
 
   AutoUpdate();
 
-  setColumnWidth(0, 24 + 5);
+  setColumnWidth(0, fonth + 3);
   for (int i = 1; i < columnCount(); i++)
   {
     resizeColumnToContents(i);

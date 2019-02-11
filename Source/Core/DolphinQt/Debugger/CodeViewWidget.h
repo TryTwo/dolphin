@@ -58,8 +58,6 @@ private:
     NOP
   };
 
-  bool IsInstructionLoadStore(std::string instruction);
-
   void ReplaceAddress(u32 address, ReplaceWith replace);
 
   void resizeEvent(QResizeEvent*) override;
@@ -77,7 +75,7 @@ private:
   void OnCopyCode();
   void OnCopyHex();
   void OnCopyTargetAddress();
-  void OnBreakpointTargetAddress();
+  void OnShowTargetInMemory();
   void OnSelectionChanged();
   void OnRunToHere();
   void OnAddFunction();
