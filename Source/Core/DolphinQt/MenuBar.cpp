@@ -1333,6 +1333,7 @@ void MenuBar::GenerateSymbolsFromRSOAuto()
 
 void MenuBar::LoadSymbolMap()
 {
+  Core::SetState(Core::State::Paused);
   std::string existing_map_file, writable_map_file;
   bool map_exists = CBoot::FindMapFile(&existing_map_file, &writable_map_file);
 
@@ -1374,6 +1375,7 @@ void MenuBar::SaveSymbolMap()
 
 void MenuBar::LoadOtherSymbolMap()
 {
+  Core::SetState(Core::State::Paused);
   const QString file = QFileDialog::getOpenFileName(
       this, tr("Load map file"), QString::fromStdString(File::GetUserPath(D_MAPS_IDX)),
       tr("Dolphin Map File (*.map)"));
@@ -1390,6 +1392,7 @@ void MenuBar::LoadOtherSymbolMap()
 
 void MenuBar::LoadBadSymbolMap()
 {
+  Core::SetState(Core::State::Paused);
   const QString file = QFileDialog::getOpenFileName(
       this, tr("Load map file"), QString::fromStdString(File::GetUserPath(D_MAPS_IDX)),
       tr("Dolphin Map File (*.map)"));
