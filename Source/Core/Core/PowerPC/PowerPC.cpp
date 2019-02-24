@@ -364,6 +364,7 @@ void SingleStep()
 void RunLoop()
 {
   s_cpu_core_base->Run();
+  Host_UpdateDisasmDialog();
 }
 
 u64 ReadFullTimeBaseValue()
@@ -603,11 +604,8 @@ void CheckBreakPoints()
   if (PowerPC::breakpoints.IsAddressBreakPoint(PC))
   {
     CPU::Break();
-
     if (PowerPC::breakpoints.IsTempBreakPoint(PC))
       PowerPC::breakpoints.Remove(PC);
-
-    Host_UpdateDisasmDialog();
   }
 }
 

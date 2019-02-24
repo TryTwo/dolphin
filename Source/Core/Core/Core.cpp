@@ -649,8 +649,6 @@ void SetState(State state)
     break;
   }
 
-  Host_UpdateDisasmDialog();
-
   if (s_on_state_changed_callback)
     s_on_state_changed_callback(GetState());
 }
