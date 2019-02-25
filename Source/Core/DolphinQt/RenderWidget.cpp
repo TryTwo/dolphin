@@ -186,7 +186,7 @@ bool RenderWidget::event(QEvent* event)
     [[fallthrough]];
 
   case QEvent::MouseButtonPress:
-    if (!Settings::Instance().GetHideCursor() && isActiveWindow())
+    if (!Settings::Instance().GetHideCursor())
     {
       setCursor(Qt::ArrowCursor);
       m_mouse_timer->start(MOUSE_HIDE_DELAY);
