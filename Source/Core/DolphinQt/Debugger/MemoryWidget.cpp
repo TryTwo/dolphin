@@ -60,8 +60,7 @@ MemoryWidget::MemoryWidget(QWidget* parent) : QDockWidget(parent)
   connect(&Settings::Instance(), &Settings::DebugModeToggled,
           [this](bool enabled) { setHidden(!enabled || !Settings::Instance().IsMemoryVisible()); });
 
-  connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, &MemoryWidget::Update);
-  connect(Host::GetInstance(), &Host::UpdateDisasmDialog, this, &MemoryWidget::Update);
+  // connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, &MemoryWidget::Update);
 
   LoadSettings();
 

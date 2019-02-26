@@ -48,7 +48,19 @@ MemoryViewWidget::MemoryViewWidget(QWidget* parent) : QTableWidget(parent)
   m_auto_update_action->setCheckable(true);
 
   connect(&Settings::Instance(), &Settings::DebugFontChanged, this, &QWidget::setFont);
-  connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, [this] { Update(); });
+  connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, [this](Core::State state) {
+    if (state != Core::State::Paused)
+    {
+      m_paused = false;
+      return;
+    }
+
+    if (m_paused)
+      return;
+
+    m_paused = true;
+    Update();
+  });
   connect(this, &MemoryViewWidget::customContextMenuRequested, this,
           &MemoryViewWidget::OnContextMenu);
   connect(&Settings::Instance(), &Settings::ThemeChanged, this, &MemoryViewWidget::Update);
@@ -58,7 +70,10 @@ MemoryViewWidget::MemoryViewWidget(QWidget* parent) : QTableWidget(parent)
     else
       m_timer->stop();
   });
-  connect(m_timer, &QTimer::timeout, this, &MemoryViewWidget::AutoUpdate);
+  connect(m_timer, &QTimer::timeout, [this] {
+    if (Core::GetState() == Core::State::Running)
+      AutoUpdate();
+  });
 
   // Update on stepping. Is there a better way than this?
   connect(Host::GetInstance(), &Host::UpdateDisasmDialog, this, [this] {
@@ -94,6 +109,11 @@ static int GetColumnCount(MemoryViewWidget::Type type)
 
 void MemoryViewWidget::Update()
 {
+  if (m_updating)
+    return;
+
+  m_updating = true;
+
   clearSelection();
 
   setColumnCount(3 + GetColumnCount(m_type));
@@ -190,8 +210,9 @@ void MemoryViewWidget::Update()
         hex_item->setBackgroundColor(QColor(0xFFFFFF));
         row_breakpoint = false;
       }
+
       if (address == PC_Target)
-        hex_item->setBackground(Qt::cyan);
+        hex_item->setBackground(Qt::yellow);
 
       setItem(i, 2 + c, hex_item);
 
@@ -219,6 +240,7 @@ void MemoryViewWidget::Update()
 
   viewport()->update();
   update();
+  m_updating = false;
 }
 
 void MemoryViewWidget::AutoUpdate()
@@ -322,7 +344,8 @@ const u32 MemoryViewWidget::PCTargetMemory()
   if (Core::GetState() != Core::State::Paused)
     return 0;
 
-  const std::string instruction = PowerPC::debug_interface.Disassemble(PC);
+  std::string instruction;
+  Core::RunAsCPUThread([&] { instruction = PowerPC::debug_interface.Disassemble(PC); });
   if ((instruction.compare(0, 2, "st") != 0 && instruction.compare(0, 1, "l") != 0 &&
        instruction.compare(0, 5, "psq_l") != 0 && instruction.compare(0, 5, "psq_s") != 0) ||
       instruction.compare(0, 2, "li") == 0)
@@ -591,7 +614,7 @@ void MemoryViewWidget::OnContextMenu()
   menu->addSeparator();
 
   menu->addAction(tr("Add Note"), this, &MemoryViewWidget::OnAddNote);
-  menu->addAction(tr("Add or Edit Note"), this, &MemoryViewWidget::OnEditNote);
+  menu->addAction(tr("Edit Note"), this, &MemoryViewWidget::OnEditNote);
   menu->addAction(tr("Delete Note"), this, &MemoryViewWidget::OnDeleteNote);
   menu->addSeparator();
   menu->addAction(tr("Show in code"), this, [this] { emit ShowCode(GetContextAddress()); });

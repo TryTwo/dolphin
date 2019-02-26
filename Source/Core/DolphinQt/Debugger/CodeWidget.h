@@ -88,4 +88,5 @@ private:
   QSplitter* m_code_splitter;
 
   QString m_symbol_filter;
+  bool m_paused = false;
 };

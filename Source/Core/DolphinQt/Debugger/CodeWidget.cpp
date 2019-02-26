@@ -63,7 +63,15 @@ CodeWidget::CodeWidget(QWidget* parent) : QDockWidget(parent)
 
   connect(&Settings::Instance(), &Settings::EmulationStateChanged, [this]() {
     if (Core::GetState() != Core::State::Paused)
+    {
+      m_paused = false;
       return;
+    }
+
+    if (m_paused)
+      return;
+
+    m_paused = true;
     SetAddress(PowerPC::ppcState.pc, CodeViewWidget::SetAddressUpdate::WithoutUpdate);
     Update();
   });
@@ -340,17 +348,18 @@ void CodeWidget::Update()
     return;
 
   const Common::Symbol* symbol = g_symbolDB.GetSymbolFromAddr(m_code_view->GetAddress());
+  Core::RunAsCPUThread([&] {
+    UpdateCallstack();
 
-  UpdateCallstack();
+    m_code_view->Update();
+    m_code_view->setFocus();
 
-  m_code_view->Update();
-  m_code_view->setFocus();
+    if (!symbol)
+      return;
 
-  if (!symbol)
-    return;
-
-  UpdateFunctionCalls(symbol);
-  UpdateFunctionCallers(symbol);
+    UpdateFunctionCalls(symbol);
+    UpdateFunctionCallers(symbol);
+  });
 }
 
 void CodeWidget::UpdateCallstack()

@@ -74,4 +74,7 @@ private:
   bool m_do_log = true;
   u32 m_context_address;
   u32 m_address = 0x80000000;
+
+  bool m_updating = false;
+  bool m_paused = false;
 };
