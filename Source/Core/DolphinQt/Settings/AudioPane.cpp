@@ -45,7 +45,6 @@ AudioPane::AudioPane()
 void AudioPane::CreateWidgets()
 {
   QFontMetrics fm(QFont::QFont());
-  const int sliderh = 16;
 
   auto* dsp_box = new QGroupBox(tr("DSP Emulation Engine"));
   auto* dsp_layout = new QVBoxLayout;
@@ -70,7 +69,7 @@ void AudioPane::CreateWidgets()
 
   m_volume_slider->setMinimum(0);
   m_volume_slider->setMaximum(100);
-  m_volume_slider->setMinimumWidth(sliderh);
+  m_volume_slider->setMinimumWidth(22);
 
   m_volume_indicator->setAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
   m_volume_indicator->setFixedWidth(QFontMetrics(font()).boundingRect(tr("%1 %").arg(100)).width());
@@ -151,7 +150,7 @@ void AudioPane::CreateWidgets()
 
   m_stretching_buffer_slider->setMinimum(5);
   m_stretching_buffer_slider->setMaximum(300);
-  m_stretching_buffer_slider->setMinimumHeight(sliderh);
+  m_stretching_buffer_slider->setMinimumHeight(22);
   m_stretching_buffer_slider->setTickPosition(QSlider::TicksBelow);
   m_stretching_buffer_slider->setTickInterval(49);
 

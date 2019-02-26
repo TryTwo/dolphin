@@ -124,7 +124,7 @@ void GameConfigWidget::CreateWidgets()
 
   m_depth_slider->setMinimum(100);
   m_depth_slider->setMaximum(200);
-  m_depth_slider->setMinimumHeight(16);
+  m_depth_slider->setMinimumHeight(22);
   m_depth_slider->setTickPosition(QSlider::TicksBelow);
   auto* depth_label = new QLabel(tr("Depth Percentage:"));
   depth_label->setAlignment(Qt::AlignLeft);

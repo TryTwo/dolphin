@@ -85,7 +85,7 @@ void AdvancedPane::CreateLayout()
   m_cpu_clock_override_slider = new QSlider(Qt::Horizontal);
   m_cpu_clock_override_slider->setRange(0, 150);
 
-  m_cpu_clock_override_slider->setMinimumHeight(16);
+  m_cpu_clock_override_slider->setMinimumHeight(22);
   m_cpu_clock_override_slider->setTickPosition(QSlider::TicksBelow);
   m_cpu_clock_override_slider->setTickInterval(25);
   cpu_clock_override_slider_layout->addWidget(m_cpu_clock_override_slider);

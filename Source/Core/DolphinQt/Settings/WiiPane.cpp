@@ -176,8 +176,6 @@ void WiiPane::CreateWhitelistedUSBPassthroughDevices()
 
 void WiiPane::CreateWiiRemoteSettings()
 {
-  const int sliderh = 16;
-
   auto* wii_remote_settings_group = new QGroupBox(tr("Wii Remote Settings"));
   auto* wii_remote_settings_group_layout = new QGridLayout();
   wii_remote_settings_group->setLayout(wii_remote_settings_group_layout);
@@ -207,7 +205,7 @@ void WiiPane::CreateWiiRemoteSettings()
   m_wiimote_speaker_volume = new QSlider(Qt::Horizontal);
   m_wiimote_speaker_volume->setMinimum(0);
   m_wiimote_speaker_volume->setMaximum(127);
-  m_wiimote_speaker_volume->setMinimumHeight(sliderh);
+  m_wiimote_speaker_volume->setMinimumHeight(22);
   m_wiimote_speaker_volume->setTickInterval(25);
   m_wiimote_speaker_volume->setTickPosition(QSlider::TicksBelow);
 

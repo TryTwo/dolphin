@@ -16,7 +16,7 @@ GraphicsSlider::GraphicsSlider(int minimum, int maximum, const Config::Info<int>
   setMinimum(minimum);
   setMaximum(maximum);
   setTickInterval(tick);
-  setMinimumHeight(16);
+  setMinimumHeight(22);
   setTickPosition(QSlider::TicksBelow);
   setValue(Config::Get(setting));
 
