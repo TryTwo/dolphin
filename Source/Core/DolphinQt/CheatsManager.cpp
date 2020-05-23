@@ -25,6 +25,7 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
+#include "Core/ActionReplay.h"
 #include "Core/ConfigManager.h"
 #include "Core/Core.h"
 #include "Core/Debugger/PPCDebugInterface.h"
@@ -43,6 +44,10 @@ constexpr int MAX_RESULTS = 4096;
 
 constexpr int INDEX_ROLE = Qt::UserRole;
 constexpr int COLUMN_ROLE = Qt::UserRole + 1;
+
+constexpr int AR_SET_BYTE_CMD = 0x00;
+constexpr int AR_SET_SHORT_CMD = 0x02;
+constexpr int AR_SET_INT_CMD = 0x04;
 
 enum class CompareType : int
 {
@@ -141,10 +146,10 @@ void CheatsManager::ConnectWidgets()
 {
   connect(m_button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
   connect(m_timer, &QTimer::timeout, this, &CheatsManager::TimedUpdate);
-  connect(m_match_new, &QPushButton::pressed, this, &CheatsManager::OnNewSearchClicked);
-  connect(m_match_next, &QPushButton::pressed, this, &CheatsManager::NextSearch);
-  connect(m_match_refresh, &QPushButton::pressed, this, &CheatsManager::Update);
-  connect(m_match_reset, &QPushButton::pressed, this, &CheatsManager::Reset);
+  connect(m_match_new, &QPushButton::clicked, this, &CheatsManager::OnNewSearchClicked);
+  connect(m_match_next, &QPushButton::clicked, this, &CheatsManager::NextSearch);
+  connect(m_match_refresh, &QPushButton::clicked, this, &CheatsManager::Update);
+  connect(m_match_reset, &QPushButton::clicked, this, &CheatsManager::Reset);
   for (auto* radio : {m_ram_main, m_ram_wii, m_ram_fakevmem})
     connect(radio, &QRadioButton::toggled, this, &CheatsManager::MemoryPtr);
 
@@ -169,6 +174,7 @@ QWidget* CheatsManager::CreateCheatSearch()
 {
   m_match_table = new QTableWidget;
 
+  m_match_table->setTabKeyNavigation(false);
   m_match_table->verticalHeader()->hide();
 
   m_match_table->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -276,19 +282,19 @@ void CheatsManager::MemoryPtr(bool update)
   if (m_ram_main->isChecked() && Memory::m_pRAM)
   {
     m_ram.ptr = Memory::m_pRAM;
-    m_ram.size = Memory::REALRAM_SIZE;
+    m_ram.size = Memory::GetRamSizeReal();
     m_ram.base = 0x80000000;
   }
   else if (m_ram_wii->isChecked() && Memory::m_pEXRAM)
   {
     m_ram.ptr = Memory::m_pEXRAM;
-    m_ram.size = Memory::EXRAM_SIZE;
+    m_ram.size = Memory::GetExRamSizeReal();
     m_ram.base = 0x90000000;
   }
   else if (m_ram_fakevmem->isChecked() && Memory::m_pFakeVMEM)
   {
     m_ram.ptr = Memory::m_pFakeVMEM;
-    m_ram.size = Memory::FAKEVMEM_SIZE;
+    m_ram.size = Memory::GetFakeVMemSize();
     m_ram.base = 0x7E000000;
   }
   else

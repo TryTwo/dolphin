@@ -31,9 +31,10 @@
 #include "Core/PowerPC/PPCAnalyst.h"
 #include "Core/PowerPC/PPCSymbolDB.h"
 #include "Core/PowerPC/PowerPC.h"
+
+#include "DolphinQt/Debugger/EditSymbolDialog.h"
 #include "DolphinQt/Debugger/PatchInstructionDialog.h"
 #include "DolphinQt/Host.h"
-#include "DolphinQt/Debugger/EditSymbolDialog.h"
 #include "DolphinQt/Resources.h"
 #include "DolphinQt/Settings.h"
 
@@ -275,7 +276,7 @@ void CodeViewWidget::Update()
 
   for (int i = 0; i < rowCount(); i++)
   {
-    u32 addr = m_address - ((rowCount() / 2) * 4) + i * 4;
+    const u32 addr = AddressForRow(i);
     auto* bp_item = new QTableWidgetItem;
     auto* addr_item = new QTableWidgetItem(QStringLiteral("%1").arg(addr, 8, 16, QLatin1Char('0')));
 

@@ -787,7 +787,7 @@ void MemoryWidget::FindValue(bool next)
   else if (Memory::m_pRAM)
   {
     ram_ptr = Memory::m_pRAM;
-    ram_size = Memory::REALRAM_SIZE;
+    ram_size = Memory::GetRamSizeReal();
     base_address = 0x80000000;
   }
   else

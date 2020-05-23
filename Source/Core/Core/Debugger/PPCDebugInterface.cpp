@@ -363,13 +363,13 @@ u32 PPCDebugInterface::GetColor(u32 address) const
   return colors[symbol->index % colors.size()];
 }
 
-void PPCDebugInterface::UpdateNote(unsigned int address, unsigned int size, std::string name)
+void PPCDebugInterface::UpdateNote(u32 address, u32 size, std::string name)
 {
   g_symbolDB.AddKnownNote(address, size, name);
   g_symbolDB.DetermineNoteLayers();
 }
 
-int PPCDebugInterface::GetNoteColor(unsigned int address)
+u32 PPCDebugInterface::GetNoteColor(u32 address)
 {
   if (!IsAlive())
     return 0xFFFFFF;

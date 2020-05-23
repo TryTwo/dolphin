@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <QDialog>
-#include <QString>
 
 #include "Common/CommonTypes.h"
 
@@ -29,7 +28,7 @@ struct Result;
 struct Ram
 {
   const u8* ptr = nullptr;
-  std::size_t size;
+  u32 size;
   u32 base;
 };
 
@@ -88,7 +87,6 @@ private:
 
   QLabel* m_result_label;
   QTableWidget* m_match_table;
-  QTableWidget* m_watch_table;
   QSplitter* m_option_splitter;
   QSplitter* m_table_splitter;
   QComboBox* m_match_length;

@@ -41,7 +41,6 @@ private:
   void LoadSettings();
   void SaveSettings();
 
-  void OnAddressSpaceChanged();
   void OnTypeChanged();
   void OnBPLogChanged();
   void OnBPTypeChanged();
