@@ -467,14 +467,11 @@ std::string GekkoDisassembler::fd_ra_rb(u32 in, int mask)
   if (mask)
   {
     if (mask & 4)
-      result += fmt::format("f{}, ", PPCGETD(in));
+      result += fmt::format("f{}", PPCGETD(in));
     if (mask & 2)
-      result += fmt::format("{}, ", regnames[PPCGETA(in)]);
+      result += fmt::format(", {}", regnames[PPCGETA(in)]);
     if (mask & 1)
-      result += fmt::format("{}, ", regnames[PPCGETB(in)]);
-
-    // Drop the trailing comma
-    result.pop_back();
+      result += fmt::format(", {}", regnames[PPCGETB(in)]);
   }
 
   return result;
@@ -980,25 +977,22 @@ void GekkoDisassembler::fdabc(u32 in, std::string_view name, int mask, unsigned 
 
   m_flags |= dmode;
   m_opcode = fmt::format("f{}{}", name, rcsel[in & 1]);
-  m_operands += fmt::format("f{}, ", PPCGETD(in));
+  m_operands += fmt::format("f{}", PPCGETD(in));
 
   if (mask & 4)
-    m_operands += fmt::format("f{}, ", PPCGETA(in));
+    m_operands += fmt::format(", f{}", PPCGETA(in));
   else if ((mask & 8) == 0)
     err |= (int)PPCGETA(in);
 
   if (mask & 2)
-    m_operands += fmt::format("f{}, ", PPCGETC(in));
+    m_operands += fmt::format(", f{}", PPCGETC(in));
   else if (PPCGETC(in) && (mask & 8) == 0)
     err |= (int)PPCGETC(in);
 
   if (mask & 1)
-    m_operands += fmt::format("f{}, ", PPCGETB(in));
+    m_operands += fmt::format(", f{}", PPCGETB(in));
   else if (!(mask & 8))
     err |= (int)PPCGETB(in);
-
-  // Drop the trailing comma
-  m_operands.pop_back();
 
   if (err)
     ill(in);
