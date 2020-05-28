@@ -536,13 +536,30 @@ void CodeTraceDialog::DisplayTrace()
   if (m_code_trace.size() >= m_max_code_trace)
     new QListWidgetItem(tr("Trace max limit reached, backtrace won't work."), m_output_list);
 
-  // Setup register to track.
-  if (!m_trace_target->text().isEmpty())
+  // Setup memory or register to track
+  if (m_trace_target->text().size() == 8)
+  {
+    bool ok;
+    u32 mem_tmp = m_trace_target->text().toUInt(&ok, 16);
+
+    if (!ok)
+    {
+      new QListWidgetItem(tr("Input error"), m_output_list);
+      return;
+    }
+
+    m_mem.push_back(mem_tmp);
+  }
+  else if (m_trace_target->text().size() < 5)
   {
     QString reg_tmp = m_trace_target->text();
     reg_tmp.replace(QStringLiteral("sp"), QStringLiteral("r1"), Qt::CaseInsensitive);
     reg_tmp.replace(QStringLiteral("rtoc"), QStringLiteral("r2"), Qt::CaseInsensitive);
     m_reg.push_back(reg_tmp.toStdString());
+  }
+  else
+  {
+    new QListWidgetItem(tr("Input error"), m_output_list);
   }
 
   if (m_trace_target->text().isEmpty())
@@ -632,9 +649,9 @@ bool CodeTraceDialog::UpdateIterator(std::vector<CodeTrace>::iterator& begin_itr
 
     begin_itr_temp = find_if(m_code_trace.begin(), m_code_trace.end(),
                              [start](const CodeTrace& t) { return t.address == start; });
-    end_itr_temp = find_if(m_code_trace.rbegin(), m_code_trace.rend(),
-                           [end](const CodeTrace& t) { return t.address == end; })
-                       .base();
+    end_itr_temp = find_if(m_code_trace.rbegin(), m_code_trace.rend(), [end](const CodeTrace& t) {
+                     return t.address == end;
+                   }).base();
   }
 
   if (begin_itr_temp == m_code_trace.end() || end_itr_temp == m_code_trace.begin())
