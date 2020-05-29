@@ -1,4 +1,4 @@
-// Copyright 2017 Dolphin Emulator Project
+// Copyright 2020 Dolphin Emulator Project
 // Licensed under GPLv2+
 // Refer to the license.txt file included.
 
@@ -48,11 +48,10 @@ private:
 
   void OnGoTop();
   void OnDelete();
-  void OnToggleBLR();
+  void OnSetBLR();
 
-  QListWidget* m_output_list;
+  QListWidget* m_matching_results_list;
   QLabel* m_exclude_size_label;
-  QLabel* m_current_size_label;
   QLabel* m_include_size_label;
   QPushButton* m_exclude_btn;
   QPushButton* m_include_btn;
