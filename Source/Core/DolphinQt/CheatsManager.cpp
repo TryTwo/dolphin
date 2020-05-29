@@ -5,7 +5,6 @@
 #include "DolphinQt/CheatsManager.h"
 
 #include <algorithm>
-#include <cstring>
 
 #include <QApplication>
 #include <QClipboard>
@@ -25,6 +24,7 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
+#include "Common/BitUtils.h"
 #include "Core/ActionReplay.h"
 #include "Core/ConfigManager.h"
 #include "Core/Core.h"
@@ -193,7 +193,7 @@ QWidget* CheatsManager::CreateCheatSearch()
   auto* layout = new QVBoxLayout;
   options->setLayout(layout);
 
-  for (const auto& option : {tr("8-bit Integer"), tr("16-bit Integer"), tr("32-bit Integer")})
+  for (const auto& option : {tr("8-bit"), tr("16-bit"), tr("32-bit"), tr("Float")})
   {
     m_match_length->addItem(option);
   }
@@ -263,7 +263,7 @@ QWidget* CheatsManager::CreateCheatSearch()
   layout->addLayout(refresh_layout);
 
   m_timer = new QTimer();
-  m_timer->setInterval(1000);
+  m_timer->setInterval(0);
 
   // Splitters
   m_option_splitter = new QSplitter(Qt::Horizontal);
@@ -319,11 +319,9 @@ int CheatsManager::GetTypeSize() const
   case DataType::Int:
     return 4;
   case DataType::Float:
-    return 5;
-  case DataType::Double:
-    return 6;
+    return 4;
   default:
-    return 6;
+    return 4;
     // return m_match_value->text().toStdString().size();
   }
 }
@@ -450,23 +448,49 @@ void CheatsManager::NextSearch()
     m_result_label->setText(tr("Memory Not Ready"));
     return;
   }
-  const int base =
-      (m_match_decimal->isChecked() ? 10 : (m_match_hexadecimal->isChecked() ? 16 : 8));
+
+  int base = 16;
+  bool is_float = m_match_length->currentIndex() == 3;
+
+  if (is_float)
+  {
+    base = 16;
+  }
+  else
+  {
+    base = (m_match_decimal->isChecked() ? 10 : (m_match_hexadecimal->isChecked() ? 16 : 8));
+  }
 
   u32 val = 0;
   bool blank_user_value = m_match_value->text().isEmpty();
   if (!blank_user_value)
   {
     bool good;
-    unsigned long value = m_match_value->text().toULong(&good, base);
 
-    if (!good)
+    if (is_float)
     {
-      m_result_label->setText(tr("Incorrect search value."));
-      return;
-    }
+      float value = m_match_value->text().toFloat(&good);
 
-    val = static_cast<u32>(value);
+      if (!good)
+      {
+        m_result_label->setText(tr("Incorrect search value."));
+        return;
+      }
+
+      val = Common::BitCast<u32>(value);
+    }
+    else
+    {
+      unsigned long value = m_match_value->text().toULong(&good, base);
+
+      if (!good)
+      {
+        m_result_label->setText(tr("Incorrect search value."));
+        return;
+      }
+
+      val = static_cast<u32>(value);
+    }
 
     switch (GetTypeSize())
     {
@@ -579,9 +603,10 @@ void CheatsManager::Update()
 {
   // ERROR &Host::UpdateDisasmDialog getting triggered.
   m_match_table->clear();
-  m_match_table->setColumnCount(2);
+  m_match_table->setColumnCount(4);
 
-  m_match_table->setHorizontalHeaderLabels({tr("Address"), tr("Value")});
+  m_match_table->setHorizontalHeaderLabels(
+      {tr("Address"), tr("Hexadecimal"), tr("Decimal"), tr("Float")});
 
   if (m_results.empty())
   {
@@ -611,9 +636,13 @@ void CheatsManager::Update()
       auto* address_item =
           new QTableWidgetItem(QStringLiteral("%1").arg(address, 8, 16, QLatin1Char('0')));
       auto* value_item = new QTableWidgetItem;
+      auto* int_item = new QTableWidgetItem;
+      auto* float_item = new QTableWidgetItem;
 
       address_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
       value_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+      float_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+      int_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
       if (PowerPC::HostIsRAMAddress(address))
       {
@@ -622,14 +651,21 @@ void CheatsManager::Update()
         case 1:
           value_item->setText(
               QStringLiteral("%1").arg(PowerPC::HostRead_U8(address), 2, 16, QLatin1Char('0')));
+          int_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U8(address), 2, 10, QLatin1Char('0')));
           break;
         case 2:
           value_item->setText(
               QStringLiteral("%1").arg(PowerPC::HostRead_U16(address), 4, 16, QLatin1Char('0')));
+          int_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U16(address), 4, 10, QLatin1Char('0')));
           break;
         case 4:
           value_item->setText(
               QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16, QLatin1Char('0')));
+          break;
+          int_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 10, QLatin1Char('0')));
           break;
         case 5:
           value_item->setText(QString::number(PowerPC::HostRead_F32(address)));
@@ -646,12 +682,22 @@ void CheatsManager::Update()
       {
         value_item->setText(QStringLiteral("---"));
       }
-
+      bool ok;
       address_item->setData(INDEX_ROLE, static_cast<int>(i));
       value_item->setData(INDEX_ROLE, static_cast<int>(i));
+      float_item->setData(INDEX_ROLE, static_cast<int>(i));
+      int_item->setData(INDEX_ROLE, static_cast<int>(i));
+
+      float_item->setText(QString::number(PowerPC::HostRead_F32(address)));
+      int_item->setText(QString::number(value_item->text().toUInt(&ok, 16)));
+
+      if (!ok)
+        int_item->setText(QStringLiteral("-"));
 
       m_match_table->setItem(static_cast<int>(i), 0, address_item);
       m_match_table->setItem(static_cast<int>(i), 1, value_item);
+      m_match_table->setItem(static_cast<int>(i), 2, int_item);
+      m_match_table->setItem(static_cast<int>(i), 3, float_item);
     }
   });
 }
