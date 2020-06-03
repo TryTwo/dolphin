@@ -45,6 +45,8 @@ private:
   void OnBPLogChanged();
   void OnBPTypeChanged();
 
+  void OnAlignmentChanged();
+
   void OnSearchAddress();
   void OnFindNextValue();
   void OnFindPreviousValue();
@@ -90,11 +92,10 @@ private:
   QRadioButton* m_input_float;
   QRadioButton* m_input_hex;
   QLabel* m_result_label;
+  QCheckBox* m_find_mem2;
 
-  // Address Spaces
-  QRadioButton* m_address_space_physical;
-  QRadioButton* m_address_space_effective;
-  QRadioButton* m_address_space_auxiliary;
+  // Align table
+  QCheckBox* m_align_switch;
 
   // Datatypes
   QRadioButton* m_type_u8;
@@ -103,6 +104,7 @@ private:
   QRadioButton* m_type_ascii;
   QRadioButton* m_type_float;
   QCheckBox* m_mem_view_style;
+
   // Breakpoint options
   QRadioButton* m_bp_read_write;
   QRadioButton* m_bp_read_only;

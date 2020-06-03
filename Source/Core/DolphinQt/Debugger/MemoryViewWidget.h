@@ -34,13 +34,14 @@ public:
 
   void Update();
   void AutoUpdate();
-  const u32 PCTargetMemory();
+  // const u32 PCTargetMemory();
   void ToggleBreakpoint();
   void ToggleRowBreakpoint(bool row);
 
   void SetType(Type type);
   void SetBPType(BPType type);
   void SetAddress(u32 address);
+  void SetAlignment(bool align);
 
   void SetBPLoggingEnabled(bool enabled);
 
@@ -72,8 +73,10 @@ private:
   Type m_type = Type::U8;
   BPType m_bp_type = BPType::ReadWrite;
   bool m_do_log = true;
+  bool m_align = 0;
   u32 m_context_address;
   u32 m_address = 0x80000000;
+  u32 m_target = 0;
 
   bool m_updating = false;
   bool m_paused = false;

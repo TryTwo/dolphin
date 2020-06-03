@@ -36,9 +36,9 @@ MemoryViewWidget::MemoryViewWidget(QWidget* parent) : QTableWidget(parent)
   verticalHeader()->hide();
   setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   setShowGrid(false);
-  setStyleSheet(
-      QStringLiteral("QTableView {selection-background-color: #0090FF; selection-color:#FFFFFF}"));
-  setAlternatingRowColors(true);
+  // setStyleSheet(QStringLiteral("QTableView {selection-background-color: #0090FF;
+  // selection-color:#FFFFFF}"));
+  // setAlternatingRowColors(true);
 
   setFont(Settings::Instance().GetDebugFont());
 
@@ -131,13 +131,19 @@ void MemoryViewWidget::Update()
   setRowCount(rows);
 
   // Get target memory to tag it if it exists
-  const u32 PC_Target = PCTargetMemory();
+
+  u32 address_align = m_address;
+
+  if (m_align && ((m_address & 0xf) != 0))
+  {
+    address_align = m_address & 0xfffffff0;
+  }
 
   for (int i = 0; i < rows; i++)
   {
     // Two column mode has rows increment by 0x4 instead of 0x10
     const u32 rowmod = ((GetColumnCount(m_type) == 2) ? 4 : 16);
-    u32 addr = m_address - (rowCount() / 2) * rowmod + i * rowmod;
+    u32 addr = address_align - (rowCount() / 2) * rowmod + i * rowmod;
 
     auto* bp_item = new QTableWidgetItem;
     bp_item->setFlags(Qt::NoItemFlags);
@@ -151,9 +157,6 @@ void MemoryViewWidget::Update()
     addr_item->setFlags(Qt::ItemIsSelectable);
 
     setItem(i, 1, addr_item);
-
-    if (addr == m_address)
-      addr_item->setSelected(true);
 
     // Don't update values unless game is started
     if ((Core::GetState() != Core::State::Paused && Core::GetState() != Core::State::Running) ||
@@ -201,18 +204,17 @@ void MemoryViewWidget::Update()
       hex_item->setFlags(Qt::ItemIsSelectable);
       const u32 address = (columns == 2) ? addr : addr + c * (16 / columns);
 
-      if (PowerPC::memchecks.OverlapsMemcheck(address, 16 / ((columns == 2) ? 4 : columns)))
-      {
+      // Also change AutoUpdate color exclusions if target address color changes..
+      if (address == m_target)
+        hex_item->setBackground(QColor(220, 235, 235, 255));
+      else if (PowerPC::memchecks.OverlapsMemcheck(address, 16 / ((columns == 2) ? 4 : columns)))
         hex_item->setBackgroundColor(Qt::red);
-      }
       else
       {
+        // Color required for auto-update to see it as white.
         hex_item->setBackgroundColor(QColor(0xFFFFFF));
         row_breakpoint = false;
       }
-
-      if (address == PC_Target)
-        hex_item->setBackground(Qt::yellow);
 
       setItem(i, 2 + c, hex_item);
 
@@ -248,13 +250,20 @@ void MemoryViewWidget::AutoUpdate()
   if (Core::GetState() != Core::State::Paused && Core::GetState() != Core::State::Running)
     return;
 
+  u32 address_align = m_address;
+
+  if (m_align && ((m_address & 0xf) != 0))
+  {
+    address_align = m_address & 0xfffffff0;
+  }
+
   Core::RunAsCPUThread([&] {
     const int columns = GetColumnCount(m_type);
 
     for (int i = 0; i < rowCount(); i++)
     {
       const u32 rowmod = ((GetColumnCount(m_type) == 2) ? 4 : 16);
-      const u32 addr = m_address - (rowCount() / 2) * rowmod + i * rowmod;
+      const u32 addr = address_align - (rowCount() / 2) * rowmod + i * rowmod;
 
       auto update_values = [&](auto value_to_string) {
         for (int c = 0; c < GetColumnCount(m_type); c++)
@@ -279,7 +288,8 @@ void MemoryViewWidget::AutoUpdate()
               hex_item->setText(value);
             }
             else if (hex_item->backgroundColor() != QColor(0xFFFFFF) &&
-                     hex_item->backgroundColor() != QColor(Qt::red))
+                     hex_item->backgroundColor() != QColor(Qt::red) &&
+                     hex_item->backgroundColor() != QColor(220, 235, 235, 255))
             {
               hex_item->setBackgroundColor(hex_item->backgroundColor().lighter(107));
             }
@@ -338,21 +348,21 @@ void MemoryViewWidget::AutoUpdate()
   });
 }
 
-const u32 MemoryViewWidget::PCTargetMemory()
-{
-  // If PC targets a memory location, output it
-  if (Core::GetState() != Core::State::Paused)
-    return 0;
-
-  std::string instruction;
-  Core::RunAsCPUThread([&] { instruction = PowerPC::debug_interface.Disassemble(PC); });
-  if ((instruction.compare(0, 2, "st") != 0 && instruction.compare(0, 1, "l") != 0 &&
-       instruction.compare(0, 5, "psq_l") != 0 && instruction.compare(0, 5, "psq_s") != 0) ||
-      instruction.compare(0, 2, "li") == 0)
-    return 0;
-  else
-    return PowerPC::debug_interface.GetMemoryAddressFromInstruction(instruction);
-}
+// const u32 MemoryViewWidget::PCTargetMemory()
+//{
+//  // If PC targets a memory location, output it
+//  if (Core::GetState() != Core::State::Paused)
+//    return 0;
+//
+//  std::string instruction;
+//  Core::RunAsCPUThread([&] { instruction = PowerPC::debug_interface.Disassemble(PC); });
+//  if ((instruction.compare(0, 2, "st") != 0 && instruction.compare(0, 1, "l") != 0 &&
+//       instruction.compare(0, 5, "psq_l") != 0 && instruction.compare(0, 5, "psq_s") != 0) ||
+//      instruction.compare(0, 2, "li") == 0)
+//    return 0;
+//  else
+//    return PowerPC::debug_interface.GetMemoryAddressFromInstruction(instruction);
+//}
 
 void MemoryViewWidget::SetType(Type type)
 {
@@ -373,7 +383,14 @@ void MemoryViewWidget::SetAddress(u32 address)
   if (m_address == address)
     return;
 
+  m_target = address;
   m_address = address;
+  Update();
+}
+
+void MemoryViewWidget::SetAlignment(bool align)
+{
+  m_align = align;
   Update();
 }
 

@@ -129,11 +129,13 @@ void MemoryWidget::CreateWidgets()
   auto* search_layout = new QVBoxLayout;
   search_group->setLayout(search_layout);
 
+  m_find_mem2 = new QCheckBox(tr("Search MEM2"));
   m_ignore_case = new QCheckBox(tr("Ignore Case"));
   m_find_next = new QPushButton(tr("Find &Next"));
   m_find_previous = new QPushButton(tr("Find &Previous"));
   m_result_label = new QLabel;
 
+  search_layout->addWidget(m_find_mem2);
   search_layout->addWidget(m_ignore_case);
   search_layout->addWidget(m_find_next);
   search_layout->addWidget(m_find_previous);
@@ -151,6 +153,7 @@ void MemoryWidget::CreateWidgets()
   m_type_ascii = new QRadioButton(tr("ASCII"));
   m_type_float = new QRadioButton(tr("Float"));
   m_mem_view_style = new QCheckBox(tr("Alternate View"));
+  m_align_switch = new QCheckBox(tr("Align table to 0"));
 
   datatype_layout->addWidget(m_type_u8);
   datatype_layout->addWidget(m_type_u16);
@@ -158,6 +161,7 @@ void MemoryWidget::CreateWidgets()
   datatype_layout->addWidget(m_type_ascii);
   datatype_layout->addWidget(m_type_float);
   datatype_layout->addWidget(m_mem_view_style);
+  datatype_layout->addWidget(m_align_switch);
   datatype_layout->setSpacing(1);
 
   // MBP options
@@ -220,9 +224,10 @@ void MemoryWidget::CreateWidgets()
 
   sidebar_layout->addLayout(searchaddr_layout);
   sidebar_layout->addWidget(m_data_edit);
-  sidebar_layout->addWidget(m_data_preview);
   sidebar_layout->addWidget(input_group);
+  sidebar_layout->addWidget(m_data_preview);
   sidebar_layout->addWidget(m_set_value);
+  sidebar_layout->addItem(new QSpacerItem(1, 26));
   sidebar_layout->addItem(new QSpacerItem(1, 32));
   sidebar_layout->addWidget(m_dump_mram);
   sidebar_layout->addWidget(m_dump_exram);
@@ -263,6 +268,7 @@ void MemoryWidget::ConnectWidgets()
   connect(m_float_convert, &QLineEdit::textEdited, [this]() { OnFloatToHex(true); });
   connect(m_hex_convert, &QLineEdit::textEdited, [this]() { OnFloatToHex(false); });
   connect(m_data_edit, &QLineEdit::textChanged, this, &MemoryWidget::ValidateSearchValue);
+  connect(m_align_switch, &QCheckBox::stateChanged, this, &MemoryWidget::OnAlignmentChanged);
 
   for (auto* radio : {m_input_ascii, m_input_float, m_input_hex})
     connect(radio, &QRadioButton::toggled, this, &MemoryWidget::ValidateSearchValue);
@@ -338,6 +344,7 @@ void MemoryWidget::LoadSettings()
   const bool type_ascii = settings.value(QStringLiteral("memorywidget/typeascii"), false).toBool();
   const bool mem_view_style =
       settings.value(QStringLiteral("memorywidget/memviewstyle"), false).toBool();
+  const bool align_switch = settings.value(QStringLiteral("memorywidget/memalign"), false).toBool();
 
   m_type_u8->setChecked(type_u8);
   m_type_u16->setChecked(type_u16);
@@ -345,6 +352,7 @@ void MemoryWidget::LoadSettings()
   m_type_float->setChecked(type_float);
   m_type_ascii->setChecked(type_ascii);
   m_mem_view_style->setChecked(mem_view_style);
+  m_align_switch->setChecked(align_switch);
 
   bool bp_rw = settings.value(QStringLiteral("memorywidget/bpreadwrite"), true).toBool();
   bool bp_r = settings.value(QStringLiteral("memorywidget/bpread"), false).toBool();
@@ -378,11 +386,18 @@ void MemoryWidget::SaveSettings()
   settings.setValue(QStringLiteral("memorywidget/typeascii"), m_type_ascii->isChecked());
   settings.setValue(QStringLiteral("memorywidget/typefloat"), m_type_float->isChecked());
   settings.setValue(QStringLiteral("memorywidget/memviewstyle"), m_mem_view_style->isChecked());
+  settings.setValue(QStringLiteral("memorywidget/memalign"), m_align_switch->isChecked());
 
   settings.setValue(QStringLiteral("memorywidget/bpreadwrite"), m_bp_read_write->isChecked());
   settings.setValue(QStringLiteral("memorywidget/bpread"), m_bp_read_only->isChecked());
   settings.setValue(QStringLiteral("memorywidget/bpwrite"), m_bp_write_only->isChecked());
   settings.setValue(QStringLiteral("memorywidget/bplog"), m_bp_log_check->isChecked());
+}
+
+void MemoryWidget::OnAlignmentChanged()
+{
+  bool align = m_align_switch->isChecked();
+  m_memory_view->SetAlignment(align);
 }
 
 void MemoryWidget::OnTypeChanged()
@@ -435,6 +450,7 @@ void MemoryWidget::OnBPTypeChanged()
 
 void MemoryWidget::SetAddress(u32 address)
 {
+  m_search_address->setText(QStringLiteral("%1").arg(address, 8, 16, QLatin1Char('0')));
   m_memory_view->SetAddress(address);
   Settings::Instance().SetMemoryVisible(true);
   raise();
@@ -778,11 +794,18 @@ void MemoryWidget::FindValue(bool next)
   std::size_t ram_size = 0;
   u32 base_address = 0;
 
-  if (m_type_u16->isChecked())
+  if (m_find_mem2->isChecked() && Memory::m_pEXRAM)
   {
-    ram_ptr = DSP::GetARAMPtr();
-    ram_size = DSP::ARAM_SIZE;
-    base_address = 0x0c005000;
+    ram_ptr = Memory::m_pEXRAM;
+    ram_size = Memory::GetExRamSizeReal();
+    base_address = 0x90000000;
+
+    // else if (PowerPC::HostIsRAMAddress(0x0c005000))
+    //{
+    //  ram_ptr = DSP::GetARAMPtr();
+    //  ram_size = DSP::ARAM_SIZE;
+    //  base_address = 0x0c005000;
+    //}
   }
   else if (Memory::m_pRAM)
   {
@@ -796,11 +819,17 @@ void MemoryWidget::FindValue(bool next)
     return;
   }
 
+  bool is_u32 = m_type_u32->isChecked() || m_type_float->isChecked();
+  bool is_u16 = m_type_u16->isChecked();
   u32 addr = 0;
+  const u8* ptr;
+  const u8* end;
+  u32 ptr_index = 0;
 
   if (!m_search_address->text().isEmpty())
     addr = m_search_address->text().toUInt(nullptr, 16) + 1;
 
+  // Search starts at addr = 0
   if (addr >= base_address)
     addr -= base_address;
 
@@ -810,46 +839,49 @@ void MemoryWidget::FindValue(bool next)
     return;
   }
 
-  const u8* ptr;
-  const u8* end;
-
   auto compare_toupper = [](char ch1, char ch2) {
     return (ch1 == ch2 || std::toupper(ch1) == std::toupper(ch2));
   };
 
-  if (next)
+  // This will find any set of bytes that equal the searched for value, but we want to align it so
+  // the match is always the start of a memory address and not the middle of it. If match is at
+  // 80000003 -> search again.
+  do
   {
-    end = &ram_ptr[ram_size - search_for.size() + 1];
+    if (next)
+    {
+      end = &ram_ptr[ram_size - search_for.size() + 1];
 
-    if (m_ignore_case->isChecked())
-      ptr = std::search(&ram_ptr[addr], end, search_for.begin(), search_for.end(), compare_toupper);
+      if (m_ignore_case->isChecked())
+        ptr =
+            std::search(&ram_ptr[addr], end, search_for.begin(), search_for.end(), compare_toupper);
+      else
+        ptr = std::search(&ram_ptr[addr], end, search_for.begin(), search_for.end());
+    }
     else
-      ptr = std::search(&ram_ptr[addr], end, search_for.begin(), search_for.end());
-  }
-  else
-  {
-    end = &ram_ptr[addr - 1];
+    {
+      end = &ram_ptr[addr - 1];
 
-    if (m_ignore_case->isChecked())
-      ptr = std::find_end(ram_ptr, end, search_for.begin(), search_for.end(), compare_toupper);
-    else
-      ptr = std::find_end(ram_ptr, end, search_for.begin(), search_for.end());
-  }
+      if (m_ignore_case->isChecked())
+        ptr = std::find_end(ram_ptr, end, search_for.begin(), search_for.end(), compare_toupper);
+      else
+        ptr = std::find_end(ram_ptr, end, search_for.begin(), search_for.end());
+    }
 
-  if (ptr != end)
-  {
-    m_result_label->setText(tr("Match Found"));
+    if (ptr == end)
+    {
+      m_result_label->setText(tr("No Match"));
+      return;
+    }
 
-    u32 offset = static_cast<u32>(ptr - ram_ptr) + base_address;
+    ptr_index = static_cast<u32>(ptr - ram_ptr);
+    addr = ptr_index + 1;
+  } while (((ptr_index & 0b11) != 0 && is_u32) || ((ptr_index & 0b1) != 0 && is_u16));
 
-    m_search_address->setText(QStringLiteral("%1").arg(offset, 8, 16, QLatin1Char('0')));
-
-    m_memory_view->SetAddress(offset);
-
-    return;
-  }
-
-  m_result_label->setText(tr("No Match"));
+  u32 match = ptr_index + base_address;
+  m_result_label->setText(tr("Match Found"));
+  m_search_address->setText(QStringLiteral("%1").arg(match, 8, 16, QLatin1Char('0')));
+  SetAddress(match);
 }
 
 void MemoryWidget::OnFindNextValue()
