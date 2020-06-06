@@ -79,13 +79,13 @@ static void HandleFrameStepHotkeys()
   static int frame_step_delay_count = 0;
   static bool frame_step_hold = false;
 
-  if (IsHotkey(HK_FRAME_ADVANCE_INCREASE_SPEED))
+  if (IsHotkey(HK_FRAME_ADVANCE_DECREASE_SPEED))
   {
     frame_step_delay = std::min(frame_step_delay + 1, MAX_FRAME_STEP_DELAY);
     return;
   }
 
-  if (IsHotkey(HK_FRAME_ADVANCE_DECREASE_SPEED))
+  if (IsHotkey(HK_FRAME_ADVANCE_INCREASE_SPEED))
   {
     frame_step_delay = std::max(frame_step_delay - 1, 0);
     return;
