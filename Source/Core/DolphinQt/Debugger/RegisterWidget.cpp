@@ -109,6 +109,17 @@ void RegisterWidget::OnItemChanged(QTableWidgetItem* item)
     static_cast<RegisterColumn*>(item)->SetValue();
 }
 
+void RegisterWidget::OnChangeAll(int col, int type)
+{
+  m_updating = true;
+  for (int i = 0; i < 32; i++)
+  {
+    auto* item = static_cast<RegisterColumn*>(m_table->item(i, col));
+    item->SetDisplay((RegisterDisplay)type);
+  }
+  m_updating = false;
+}
+
 void RegisterWidget::ShowContextMenu()
 {
   QMenu* menu = new QMenu(this);
@@ -141,9 +152,18 @@ void RegisterWidget::ShowContextMenu()
     // i18n: A floating point number
     auto* view_float = menu->addAction(tr("Float"));
     // i18n: A double precision floating point number
-    auto* view_double = menu->addAction(tr("Double"));
+    auto* view_double = menu->addAction(tr("Float/Double"));
 
-    for (auto* action : {view_hex, view_int, view_uint, view_float, view_double})
+    menu->addSeparator();
+
+    auto* view_hex_all = menu->addAction(tr("All Hexadecimal"));
+    auto* view_int_all = menu->addAction(tr("All Signed Integer"));
+    auto* view_uint_all = menu->addAction(tr("All Unsigned Integer"));
+    auto* view_float_all = menu->addAction(tr("All Float"));
+    auto* view_double_all = menu->addAction(tr("All Float/Double"));
+
+    for (auto* action : {view_hex, view_int, view_uint, view_float, view_double, view_hex_all,
+                         view_int_all, view_uint_all, view_float_all, view_double_all})
     {
       action->setCheckable(true);
       action->setVisible(false);
@@ -176,10 +196,16 @@ void RegisterWidget::ShowContextMenu()
       view_int->setVisible(true);
       view_uint->setVisible(true);
       view_float->setVisible(true);
+      view_hex_all->setVisible(true);
+      view_int_all->setVisible(true);
+      view_uint_all->setVisible(true);
+      view_float_all->setVisible(true);
       break;
     case RegisterType::fpr:
       view_hex->setVisible(true);
+      view_hex_all->setVisible(true);
       view_double->setVisible(true);
+      view_double_all->setVisible(true);
       break;
     default:
       break;
@@ -214,6 +240,14 @@ void RegisterWidget::ShowContextMenu()
       item->SetDisplay(RegisterDisplay::Double);
       m_updating = false;
     });
+
+    connect(view_hex_all, &QAction::triggered,
+            [this, item] { OnChangeAll(m_table->currentItem()->column(), 0); });
+    connect(view_int_all, &QAction::triggered, [this] { OnChangeAll(1, 1); });
+    connect(view_uint_all, &QAction::triggered, [this] { OnChangeAll(1, 2); });
+    connect(view_float_all, &QAction::triggered, [this] { OnChangeAll(1, 3); });
+    connect(view_double_all, &QAction::triggered,
+            [this, item] { OnChangeAll(m_table->currentItem()->column(), 4); });
 
     menu->addSeparator();
   }
