@@ -120,6 +120,15 @@ private:
   }
 };
 
+bool IsInstructionLoadStore(std::string instruction)
+{
+  // Could add check for context address being near PC, because we need gprs to be correct for the
+  // load/store.
+  return ((instruction.compare(0, 2, "st") == 0 || instruction.compare(0, 1, "l") == 0 ||
+           instruction.compare(0, 5, "psq_l") == 0 || instruction.compare(0, 5, "psq_s") == 0) &&
+          instruction.compare(0, 2, "li") != 0);
+}
+
 // "Most mouse types work in steps of 15 degrees, in which case the delta value is a multiple of
 // 120; i.e., 120 units * 1/8 = 15 degrees." (http://doc.qt.io/qt-5/qwheelevent.html#angleDelta)
 constexpr double SCROLL_FRACTION_DEGREES = 15.;
@@ -288,6 +297,7 @@ void CodeViewWidget::Update()
     std::string desc;
     int color = 0xFFFFFF;
     const Common::Note* note = g_symbolDB.GetNoteFromAddr(addr);
+
     if (note == nullptr)
     {
       desc = PowerPC::debug_interface.GetDescription(addr);
@@ -469,15 +479,6 @@ void CodeViewWidget::ReplaceAddress(u32 address, ReplaceWith replace)
   Update();
 }
 
-bool IsInstructionLoadStore(std::string instruction)
-{
-  // Could add check for context address being near PC, because we need gprs to be correct for the
-  // load/store.
-  return ((instruction.compare(0, 2, "st") == 0 || instruction.compare(0, 1, "l") == 0 ||
-           instruction.compare(0, 5, "psq_l") == 0 || instruction.compare(0, 5, "psq_s") == 0) &&
-          instruction.compare(0, 2, "li") != 0);
-}
-
 void CodeViewWidget::OnCopyTargetAddress()
 {
   const std::string code_line = PowerPC::debug_interface.Disassemble(GetContextAddress());
@@ -514,6 +515,10 @@ void CodeViewWidget::OnContextMenu()
 
   auto* follow_branch_action =
       menu->addAction(tr("Follow &branch"), this, &CodeViewWidget::OnFollowBranch);
+  auto* go_start = menu->addAction(tr("J&ump to top of function"),
+                                   [this]() { CodeViewWidget::OnNavFunction(true); });
+  auto* go_end = menu->addAction(tr("&Jump to end of function"),
+                                 [this]() { CodeViewWidget::OnNavFunction(false); });
 
   menu->addSeparator();
 
@@ -531,18 +536,20 @@ void CodeViewWidget::OnContextMenu()
 
   menu->addSeparator();
 
+  auto* symbols_menu = menu->addMenu(tr("Modify Symbols"));
+
   auto* function_action =
-      menu->addAction(tr("&Add function symbol"), this, &CodeViewWidget::OnAddFunction);
+      symbols_menu->addAction(tr("&Add function symbol"), this, &CodeViewWidget::OnAddFunction);
   auto* symbol_edit_action =
-      menu->addAction(tr("&Edit symbol"), this, &CodeViewWidget::OnEditSymbol);
+      symbols_menu->addAction(tr("&Edit symbol"), this, &CodeViewWidget::OnEditSymbol);
   auto* symbol_delete_action =
-      menu->addAction(tr("&Delete symbol"), this, &CodeViewWidget::OnDeleteSymbol);
+      symbols_menu->addAction(tr("&Delete symbol"), this, &CodeViewWidget::OnDeleteSymbol);
 
-  menu->addSeparator();
+  symbols_menu->addSeparator();
 
-  menu->addAction(tr("Add Note"), this, &CodeViewWidget::OnAddNote);
-  menu->addAction(tr("Edit Note"), this, &CodeViewWidget::OnEditNote);
-  menu->addAction(tr("Delete Note"), this, &CodeViewWidget::OnDeleteNote);
+  symbols_menu->addAction(tr("Add Note"), this, &CodeViewWidget::OnAddNote);
+  symbols_menu->addAction(tr("Edit Note"), this, &CodeViewWidget::OnEditNote);
+  symbols_menu->addAction(tr("Delete Note"), this, &CodeViewWidget::OnDeleteNote);
 
   menu->addSeparator();
 
@@ -555,11 +562,13 @@ void CodeViewWidget::OnContextMenu()
   auto* restore_action =
       menu->addAction(tr("Restore instruction"), this, &CodeViewWidget::OnRestoreInstruction);
 
+  menu->addSeparator();
+
   follow_branch_action->setEnabled(running && GetBranchFromAddress(addr));
 
   for (auto* action : {copy_address_action, copy_line_action, copy_hex_action, copy_target_address,
-                       show_target_address, function_action, ppc_action, insert_blr_action,
-                       insert_nop_action, replace_action})
+                       show_target_address, function_action, go_start, go_end, ppc_action,
+                       insert_blr_action, insert_nop_action, replace_action})
     action->setEnabled(running);
 
   symbol_edit_action->setEnabled(has_symbol);
@@ -796,6 +805,27 @@ void CodeViewWidget::OnFollowBranch()
     return;
 
   SetAddress(branch_addr, SetAddressUpdate::WithUpdate);
+}
+
+void CodeViewWidget::OnNavFunction(bool up)
+{
+  u32 address = GetContextAddress();
+  int distance = 0;
+
+  // Distance to prevent it from going too far out of range, if it's outside of any function. Not
+  // sure what a good value is.
+  while (PowerPC::HostIsRAMAddress(address) && distance != 5000)
+  {
+    if (PowerPC::HostRead_U32(address) == 0x4e800020)
+    {
+      address += up ? 0x4 : -0x4;
+      SetAddress(address, SetAddressUpdate::WithUpdate);
+      return;
+    }
+
+    distance += 1;
+    address += up ? -0x4 : 0x4;
+  }
 }
 
 void CodeViewWidget::OnSelectionChanged()

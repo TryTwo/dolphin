@@ -69,6 +69,7 @@ private:
   void OnContextMenu();
 
   void OnFollowBranch();
+  void OnNavFunction(bool up);
   void OnCopyAddress();
   void OnShowInMemory();
   void OnCopyFunction();
