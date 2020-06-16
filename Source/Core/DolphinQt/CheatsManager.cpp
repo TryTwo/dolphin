@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -17,6 +18,7 @@
 #include <QMenu>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QSpinBox>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QTableWidget>
@@ -156,17 +158,18 @@ void CheatsManager::ConnectWidgets()
   m_match_table->setContextMenuPolicy(Qt::CustomContextMenu);
   connect(m_match_table, &QTableWidget::customContextMenuRequested, this,
           &CheatsManager::OnMatchContextMenu);
-  connect(m_refresh, &QLineEdit::textChanged, [this]() {
-    bool good;
-    u32 interval = m_refresh->text().toUInt(&good, 10);
-    if (good)
-      m_timer->setInterval(interval);
-    if (interval == 0)
-      m_timer->setSingleShot(true);
-    else
+  connect(m_refresh, qOverload<int>(&QSpinBox::valueChanged),
+          [this](int interval) { m_timer->setInterval(interval); });
+  connect(m_refresh_enabled, &QCheckBox::stateChanged, [this](bool enabled) {
+    if (enabled)
+    {
       m_timer->setSingleShot(false);
-    if (!m_results.empty())
       m_timer->start();
+    }
+    else
+    {
+      m_timer->setSingleShot(true);
+    }
   });
 }
 
@@ -175,16 +178,30 @@ QWidget* CheatsManager::CreateCheatSearch()
   m_match_table = new QTableWidget;
 
   m_match_table->setTabKeyNavigation(false);
+  m_match_table->setColumnCount(4);
   m_match_table->verticalHeader()->hide();
+  m_match_table->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  m_match_table->setHorizontalHeaderLabels(
+      {tr("Address"), tr("Hexadecimal"), tr("Decimal"), tr("Float")});
+  m_match_table->setColumnWidth(3, m_match_table->columnWidth(3) * 1.5);
+  m_match_table->setFixedWidth(m_match_table->horizontalHeader()->length() + 2);
 
   m_match_table->setSelectionBehavior(QAbstractItemView::SelectRows);
+
+  // Fixed width appears to look best. This adds an empty spaceritem to the left of the table,
+  // so it can absorb extra space.
+  auto* table_with_space = new QWidget;
+  auto* space_layout = new QHBoxLayout;
+  table_with_space->setLayout(space_layout);
+  space_layout->addStretch();
+  space_layout->addWidget(m_match_table);
 
   // Options
   m_result_label = new QLabel;
   m_match_length = new QComboBox;
   m_match_operation = new QComboBox;
   m_match_value = new QLineEdit;
-  m_match_new = new QPushButton(tr("New Search"));
+  m_match_new = new QPushButton(tr("Initialize"));
   m_match_next = new QPushButton(tr("Next Search"));
   m_match_refresh = new QPushButton(tr("Refresh"));
   m_match_reset = new QPushButton(tr("Reset"));
@@ -244,10 +261,19 @@ QWidget* CheatsManager::CreateCheatSearch()
   range_layout->addWidget(m_range_end);
 
   auto* refresh_layout = new QHBoxLayout;
-  m_refresh_label = new QLabel(tr("Refresh speed in milliseconds (0 = off)"));
-  m_refresh = new QLineEdit(tr("1000"));
+  m_refresh_label = new QLabel(tr("Refresh displayed values every"));
+  m_refresh = new QSpinBox();
+  m_refresh_enabled = new QCheckBox();
+
+  m_refresh->setMinimum(100);
+  m_refresh->setMaximum(5000);
+  m_refresh->setSingleStep(100);
+  m_refresh->setValue(1000);
+  m_refresh->setSuffix(tr(" ms"));
+
   refresh_layout->addWidget(m_refresh_label);
   refresh_layout->addWidget(m_refresh);
+  refresh_layout->addWidget(m_refresh_enabled);
 
   layout->addWidget(m_result_label);
   layout->addWidget(m_match_length);
@@ -263,16 +289,21 @@ QWidget* CheatsManager::CreateCheatSearch()
   layout->addLayout(refresh_layout);
 
   m_timer = new QTimer();
-  m_timer->setInterval(0);
+  m_timer->setInterval(1000);
 
   // Splitters
   m_option_splitter = new QSplitter(Qt::Horizontal);
   m_table_splitter = new QSplitter(Qt::Vertical);
 
-  m_table_splitter->addWidget(m_match_table);
+  m_table_splitter->addWidget(table_with_space);
 
   m_option_splitter->addWidget(m_table_splitter);
   m_option_splitter->addWidget(options);
+
+  // Only the spacer to the left of the table will expand. There shouldn't be a reason for anything
+  // else to.
+  m_option_splitter->setStretchFactor(0, 1);
+  m_option_splitter->setStretchFactor(1, 0);
 
   return m_option_splitter;
 }
@@ -438,7 +469,6 @@ void CheatsManager::OnNewSearchClicked()
   });
 
   Update();
-  m_timer->start();
 }
 
 void CheatsManager::NextSearch()
@@ -506,7 +536,6 @@ void CheatsManager::NextSearch()
   FilterCheatSearchResults(val, blank_user_value);
 
   Update();
-  m_timer->start();
 }
 
 u32 CheatsManager::SwapValue(u32 value)
@@ -526,6 +555,9 @@ u32 CheatsManager::SwapValue(u32 value)
 
 void CheatsManager::TimedUpdate()
 {
+  if (m_updating)
+    return;
+
   if (m_results.empty())
   {
     m_result_label->clear();
@@ -559,7 +591,12 @@ void CheatsManager::TimedUpdate()
     {
       u32 address = m_results[i].address + m_ram.base;
       auto* value_item = new QTableWidgetItem;
+      auto* int_item = new QTableWidgetItem;
+      auto* float_item = new QTableWidgetItem;
+
       value_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+      float_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+      int_item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
       if (PowerPC::HostIsRAMAddress(address))
       {
@@ -576,15 +613,12 @@ void CheatsManager::TimedUpdate()
         case 4:
           value_item->setText(
               QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16, QLatin1Char('0')));
-          break;
-        case 5:
-          value_item->setText(QString::number(PowerPC::HostRead_F32(address)));
-          break;
-        case 6:
-          value_item->setText(QString::number(PowerPC::HostRead_F64(address)));
+          float_item->setText(QString::number(PowerPC::HostRead_F32(address)));
           break;
         default:
-          value_item->setText(tr("String Match"));
+          value_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16, QLatin1Char('0')));
+          float_item->setText(QString::number(PowerPC::HostRead_F32(address)));
           break;
         }
       }
@@ -593,8 +627,20 @@ void CheatsManager::TimedUpdate()
         value_item->setText(QStringLiteral("---"));
       }
 
-      value_item->setData(INDEX_ROLE, i);
-      m_match_table->setItem(i, 1, value_item);
+      bool ok;
+
+      value_item->setData(INDEX_ROLE, static_cast<int>(i));
+      float_item->setData(INDEX_ROLE, static_cast<int>(i));
+      int_item->setData(INDEX_ROLE, static_cast<int>(i));
+
+      int_item->setText(QString::number(value_item->text().toUInt(&ok, 16)));
+
+      if (!ok)
+        int_item->setText(QStringLiteral("-"));
+
+      m_match_table->setItem(static_cast<int>(i), 1, value_item);
+      m_match_table->setItem(static_cast<int>(i), 2, int_item);
+      m_match_table->setItem(static_cast<int>(i), 3, float_item);
     }
   });
 }
@@ -602,18 +648,21 @@ void CheatsManager::TimedUpdate()
 void CheatsManager::Update()
 {
   // ERROR &Host::UpdateDisasmDialog getting triggered.
-  m_match_table->clear();
-  m_match_table->setColumnCount(4);
+  m_updating = true;
 
-  m_match_table->setHorizontalHeaderLabels(
-      {tr("Address"), tr("Hexadecimal"), tr("Decimal"), tr("Float")});
+  m_match_table->clearContents();
 
   if (m_results.empty())
   {
     m_result_label->clear();
     m_timer->stop();
     m_match_table->setRowCount(0);
+    m_updating = false;
     return;
+  }
+  else if (m_refresh_enabled->isChecked())
+  {
+    m_timer->start();
   }
 
   int results_display = static_cast<int>(m_results.size());
@@ -651,30 +700,18 @@ void CheatsManager::Update()
         case 1:
           value_item->setText(
               QStringLiteral("%1").arg(PowerPC::HostRead_U8(address), 2, 16, QLatin1Char('0')));
-          int_item->setText(
-              QStringLiteral("%1").arg(PowerPC::HostRead_U8(address), 2, 10, QLatin1Char('0')));
           break;
         case 2:
           value_item->setText(
               QStringLiteral("%1").arg(PowerPC::HostRead_U16(address), 4, 16, QLatin1Char('0')));
-          int_item->setText(
-              QStringLiteral("%1").arg(PowerPC::HostRead_U16(address), 4, 10, QLatin1Char('0')));
           break;
         case 4:
           value_item->setText(
               QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16, QLatin1Char('0')));
           break;
-          int_item->setText(
-              QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 10, QLatin1Char('0')));
-          break;
-        case 5:
-          value_item->setText(QString::number(PowerPC::HostRead_F32(address)));
-          break;
-        case 6:
-          value_item->setText(QString::number(PowerPC::HostRead_F64(address)));
-          break;
         default:
-          value_item->setText(tr("String Match"));
+          value_item->setText(
+              QStringLiteral("%1").arg(PowerPC::HostRead_U32(address), 8, 16, QLatin1Char('0')));
           break;
         }
       }
@@ -700,6 +737,7 @@ void CheatsManager::Update()
       m_match_table->setItem(static_cast<int>(i), 3, float_item);
     }
   });
+  m_updating = false;
 }
 
 void CheatsManager::OnMatchContextMenu()
@@ -726,7 +764,8 @@ void CheatsManager::Reset()
   m_range_start->setEnabled(true);
   m_range_end->setEnabled(true);
   m_match_new->setEnabled(true);
-  m_match_table->clear();
+  m_match_table->clearContents();
+  m_updating = false;
   m_result_label->setText(QStringLiteral(""));
   Update();
 }

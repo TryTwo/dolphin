@@ -12,12 +12,14 @@
 #include "Common/CommonTypes.h"
 
 class ARCodeWidget;
+class QCheckBox;
 class QComboBox;
 class QDialogButtonBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
 class QRadioButton;
+class QSpinBox;
 class QSplitter;
 class QTabWidget;
 class QTableWidget;
@@ -94,7 +96,8 @@ private:
   QLineEdit* m_match_value;
   QLineEdit* m_range_start;
   QLineEdit* m_range_end;
-  QLineEdit* m_refresh;
+  QSpinBox* m_refresh;
+  QCheckBox* m_refresh_enabled;
   QLabel* m_refresh_label;
   QPushButton* m_match_new;
   QPushButton* m_match_next;
