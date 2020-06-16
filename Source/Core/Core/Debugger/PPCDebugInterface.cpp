@@ -390,15 +390,18 @@ std::string PPCDebugInterface::GetDescription(u32 address) const
   return g_symbolDB.GetDescription(address);
 }
 
-u32 PPCDebugInterface::GetMemoryAddressFromInstruction(std::string instruction) const
+std::optional<u32> PPCDebugInterface::GetMemoryAddressFromInstruction(std::string instruction) const
 {
   std::regex re(",[^r0-]*(-?)(0[xX]?[0-9a-fA-F]*|r\\d+)[^r^s]*.(p|toc|\\d+)");
   std::smatch match;
-  if (!std::regex_search(instruction, match, re))
-    return 0;
 
-  // Output: match.str(1): negative sign for offset or nothing. match.str(2): 0xNNNN, 0, or rNN.
-  // Checked next for 'r' to see if a gpr needs to be loaded. match.str(3): will either be p, toc,
+  // Instructions should be identified as a load or store before using this function. This error
+  // check should never trigger.
+  if (!std::regex_search(instruction, match, re))
+    return std::nullopt;
+
+  // Output: match.str(1): negative sign for offset or no match. match.str(2): 0xNNNN, 0, or rNN.
+  // Check next for 'r' to see if a gpr needs to be loaded. match.str(3): will either be p, toc,
   // or NN. Always a gpr.
   const std::string offset_match = match.str(2);
   const std::string register_match = match.str(3);

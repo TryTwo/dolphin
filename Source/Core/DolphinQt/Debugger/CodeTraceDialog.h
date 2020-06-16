@@ -15,6 +15,7 @@ class QLabel;
 class QComboBox;
 class QListWidget;
 class QListWidgetItem;
+class QSpinBox;
 
 struct CodeTrace
 {
@@ -47,7 +48,7 @@ private:
   void CreateWidgets();
   void ConnectWidgets();
   void ClearAll();
-  void OnRunTrace(bool checked);
+  void OnRecordTrace(bool checked);
   void SaveInstruction();
   void ForwardTrace();
   void Backtrace();
@@ -56,6 +57,7 @@ private:
   void OnChangeRange();
   bool UpdateIterator(std::vector<CodeTrace>::iterator& begin_itr,
                       std::vector<CodeTrace>::iterator& end_itr);
+  bool CompareInstruction(std::string instruction, std::vector<std::string> instruction_type);
   void UpdateBreakpoints();
   void InfoDisp();
 
@@ -69,17 +71,23 @@ private:
   QCheckBox* m_verbose;
   QCheckBox* m_clear_on_loop;
   QCheckBox* m_change_range;
-  QLabel* m_sizes;
   QPushButton* m_reprocess;
-  QPushButton* m_run_trace;
+  QLabel* m_record_limit_label;
+  QLabel* m_results_limit_label;
+  QSpinBox* m_record_limit_input;
+  QSpinBox* m_results_limit_input;
+
+  QPushButton* m_record_trace;
   CodeWidget* m_parent;
 
   std::vector<CodeTrace> m_code_trace;
   std::vector<TraceOutput> m_trace_out;
   std::vector<std::string> m_reg;
   std::vector<u32> m_mem;
-  // Make modifiable?
-  const size_t m_max_code_trace = 150000;
-  const size_t m_max_trace = 2000;
+
+  size_t m_record_limit = 150000;
+  size_t m_results_limit = 2000;
   QString m_error_msg;
+
+  bool m_recording = false;
 };

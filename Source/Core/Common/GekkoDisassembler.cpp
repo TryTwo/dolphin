@@ -193,14 +193,10 @@ static std::string ldst_offs(u32 val)
 static std::string psq_offs(u32 val)
 {
   if (val == 0)
-  {
     return "0";
-  }
 
-  if (val & 0x8000)
-  {
+  if (val & 0x800)
     return fmt::format("-0x{:04X}", ((~val) & 0xfff) + 1);
-  }
 
   return fmt::format("0x{:04X}", val);
 }
@@ -1094,7 +1090,7 @@ void GekkoDisassembler::ps(u32 inst)
   {
   case 6:
     m_opcode = inst & 0x40 ? "psq_lux" : "psq_lx";
-    m_operands = fmt::format("p{}, r{} + r{}, {}, qr{}", FD, RA, RB, WX, IX);
+    m_operands = fmt::format("p{}, r{}, r{}, {}, qr{}", FD, RA, RB, WX, IX);
     return;
 
   case 7:
@@ -1263,22 +1259,23 @@ void GekkoDisassembler::ps_mem(u32 inst)
   {
   case 56:
     m_opcode = "psq_l";
-    m_operands = fmt::format("p{}, {} (r{}), {}, qr{}", RS, psq_offs(inst & 0xFFF), RA, W, I);
+    m_operands = fmt::format("p{}, {} (r{}), {}, qr{}", RS, psq_offs(inst & 0xfff), RA, W, I);
     break;
 
   case 57:
     m_opcode = "psq_lu";
-    m_operands = fmt::format("p{}, {} (r{}), {}, qr{}", RS, psq_offs(inst & 0xFFF), RA, W, I);
+    m_operands = fmt::format("p{}, {} (r{}), {}, qr{}", RS, psq_offs(inst & 0xfff), RA, W, I);
+    ;
     break;
 
   case 60:
     m_opcode = "psq_st";
-    m_operands = fmt::format("p{}, {} (r{}), {}, qr{}", RS, psq_offs(inst & 0xFFF), RA, W, I);
+    m_operands = fmt::format("p{}, {} (r{}), {}, qr{}", RS, psq_offs(inst & 0xfff), RA, W, I);
     break;
 
   case 61:
     m_opcode = "psq_stu";
-    m_operands = fmt::format("p{}, {} (r{}), {}, qr{}", RS, psq_offs(inst & 0xFFF), RA, W, I);
+    m_operands = fmt::format("p{}, {} (r{}), {}, qr{}", RS, psq_offs(inst & 0xfff), RA, W, I);
     break;
   }
 }

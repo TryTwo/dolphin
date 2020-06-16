@@ -113,7 +113,6 @@ void CodeWidget::CreateWidgets()
 
   m_search_address = new QLineEdit;
   m_search_symbols = new QLineEdit;
-  m_code_trace = new QPushButton(tr("Trace"));
   m_code_diff = new QPushButton(tr("Diff"));
   m_code_view = new CodeViewWidget;
 
@@ -167,8 +166,7 @@ void CodeWidget::CreateWidgets()
 
   layout->addWidget(m_search_address, 0, 0);
   layout->addWidget(m_search_symbols, 0, 1);
-  layout->addWidget(m_code_trace, 0, 2);
-  layout->addWidget(m_code_diff, 0, 3);
+  layout->addWidget(m_code_diff, 0, 2);
   layout->addWidget(m_code_splitter, 1, 0, -1, -1);
 
   QWidget* widget = new QWidget(this);
@@ -194,12 +192,10 @@ void CodeWidget::ConnectWidgets()
   connect(m_search_address, &QLineEdit::textChanged, this, &CodeWidget::OnSearchAddress);
   connect(m_search_address, &QLineEdit::returnPressed, this, &CodeWidget::OnSearchAddress);
   connect(m_search_symbols, &QLineEdit::textChanged, this, &CodeWidget::OnSearchSymbols);
-  connect(m_code_trace, &QPushButton::pressed, this, &CodeWidget::OnTrace);
   connect(m_code_diff, &QPushButton::pressed, this, &CodeWidget::OnDiff);
   connect(m_symbols_list, &QListWidget::itemClicked, this, &CodeWidget::OnSelectSymbol);
   connect(m_note_list, &QListWidget::itemClicked, this, &CodeWidget::OnSelectNote);
-  connect(m_callstack_list, &QListWidget::itemClicked, this,
-          &CodeWidget::OnSelectCallstack);
+  connect(m_callstack_list, &QListWidget::itemClicked, this, &CodeWidget::OnSelectCallstack);
   connect(m_function_calls_list, &QListWidget::itemClicked, this,
           &CodeWidget::OnSelectFunctionCalls);
   connect(m_function_callers_list, &QListWidget::itemClicked, this,
@@ -213,16 +209,6 @@ void CodeWidget::ConnectWidgets()
   connect(m_code_view, &CodeViewWidget::RequestPPCComparison, this,
           &CodeWidget::RequestPPCComparison);
   connect(m_code_view, &CodeViewWidget::ShowMemory, this, &CodeWidget::ShowMemory);
-}
-
-void CodeWidget::OnTrace()
-{
-  if (!trace_dialog)
-    trace_dialog = new CodeTraceDialog(this);
-  trace_dialog->setWindowFlag(Qt::WindowMinimizeButtonHint);
-  trace_dialog->show();
-  trace_dialog->raise();
-  trace_dialog->activateWindow();
 }
 
 void CodeWidget::OnDiff()

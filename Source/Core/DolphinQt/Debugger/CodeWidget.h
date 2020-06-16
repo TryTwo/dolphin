@@ -9,7 +9,6 @@
 
 #include "Common/CommonTypes.h"
 #include "DolphinQt/Debugger/CodeDiffDialog.h"
-#include "DolphinQt/Debugger/CodeTraceDialog.h"
 #include "DolphinQt/Debugger/CodeViewWidget.h"
 
 class QCloseEvent;
@@ -17,6 +16,7 @@ class QLineEdit;
 class QShowEvent;
 class QSplitter;
 class QListWidget;
+class QTableWidget;
 class QPushButton;
 
 namespace Common
@@ -38,7 +38,6 @@ public:
   void ShowPC();
   void SetPC();
 
-  void OnTrace();
   void OnDiff();
   void ToggleBreakpoint();
   void AddBreakpoint();
@@ -72,11 +71,9 @@ private:
   void showEvent(QShowEvent* event) override;
   bool eventFilter(QObject* obj, QEvent* event);
 
-  CodeTraceDialog* trace_dialog = nullptr;
   CodeDiffDialog* diff_dialog = nullptr;
   QLineEdit* m_search_address;
   QLineEdit* m_search_symbols;
-  QPushButton* m_code_trace;
   QPushButton* m_code_diff;
   QListWidget* m_callstack_list;
   QListWidget* m_symbols_list;

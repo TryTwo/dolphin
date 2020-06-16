@@ -82,8 +82,8 @@ public:
   int GetColor(u32 address) const override;
   int GetNoteColor(u32 address) const override;
   std::string GetDescription(u32 address) const override;
-  const u32 GetMemoryAddressFromInstruction(std::string instruction) const override;
   void UpdateNote(u32 address, u32 size, std::string name) override;
+  std::optional<u32> GetMemoryAddressFromInstruction(std::string instruction) const override;
 
   void Clear() override;
 
