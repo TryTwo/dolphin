@@ -77,7 +77,6 @@ private:
   void OnCopyHex();
   void OnCopyTargetAddress();
   void OnShowTargetInMemory();
-  void OnSelectionChanged();
   void OnRunToHere();
   void OnAddFunction();
   void OnEditSymbol();
@@ -97,6 +96,7 @@ private:
 
   u32 m_address = 0;
   u32 m_context_address = 0;
+  bool m_refresh = false;
 
   std::vector<CodeViewBranch> m_branches;
 

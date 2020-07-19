@@ -148,11 +148,19 @@ CodeViewWidget::CodeViewWidget()
   setColumnCount(CODE_VIEW_COLUMNCOUNT);
   setShowGrid(false);
   setContextMenuPolicy(Qt::CustomContextMenu);
-  setSelectionMode(QAbstractItemView::SingleSelection);
-  setSelectionBehavior(QAbstractItemView::SelectRows);
+
+  // Selection gives us behaviors we don't want. We want m_address to always be colored as selected
+  // and PC to always be green. Added right click coloring to confirm what line the context menu
+  // applies to.  Dotted lines from being selected are removed with the stylesheet. Various issues
+  // with displaying the table headers are made much worse with NoSelection. Using hide() then
+  // show() to fix.
+  setSelectionMode(QAbstractItemView::NoSelection);
+  setStyleSheet(QStringLiteral("QTableWidget::item:focus { border: 0px }"));
 
   setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+  // Don't want auto-scrolling to thr right when clicking parameters.
+  setAutoScroll(false);
 
   verticalHeader()->hide();
   horizontalHeader()->setSectionResizeMode(CODE_VIEW_COLUMN_BREAKPOINT, QHeaderView::Fixed);
@@ -170,7 +178,6 @@ CodeViewWidget::CodeViewWidget()
   FontBasedSizing();
 
   connect(this, &CodeViewWidget::customContextMenuRequested, this, &CodeViewWidget::OnContextMenu);
-  connect(this, &CodeViewWidget::itemSelectionChanged, this, &CodeViewWidget::OnSelectionChanged);
   connect(&Settings::Instance(), &Settings::DebugFontChanged, this, &QWidget::setFont);
   connect(&Settings::Instance(), &Settings::DebugFontChanged, this,
           &CodeViewWidget::FontBasedSizing);
@@ -179,6 +186,7 @@ CodeViewWidget::CodeViewWidget()
     if (Core::GetState() == Core::State::Paused)
       m_address = PC;
 
+    m_refresh = true;
     Update();
   });
   connect(Host::GetInstance(), &Host::UpdateDisasmDialog, this, [this] {
@@ -326,13 +334,18 @@ void CodeViewWidget::Update()
 
     for (auto* item : {bp_item, addr_item, ins_item, param_item, description_item, branch_item})
     {
-      item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+      item->setFlags(Qt::ItemIsEnabled);
       item->setData(Qt::UserRole, addr);
 
       if (addr == pc && item != bp_item)
       {
         item->setBackground(QColor(Qt::green));
         item->setForeground(QColor(Qt::black));
+      }
+      else if (addr == m_address && item != bp_item)
+      {
+        item->setBackground(QColor(0x0078d7));
+        item->setForeground(QColor(Qt::white));
       }
       else if (color != 0xFFFFFF)
       {
@@ -383,7 +396,18 @@ void CodeViewWidget::Update()
 
   g_symbolDB.FillInCallers();
 
-  repaint();
+  // Various bugs with the table header require a hide then show. Appears to work fine.
+  if (m_refresh)
+  {
+    hide();
+    show();
+    m_refresh = false;
+  }
+  else
+  {
+    update();
+  }
+
   m_updating = false;
 }
 
@@ -842,19 +866,6 @@ void CodeViewWidget::OnNavFunction(bool up)
   }
 }
 
-void CodeViewWidget::OnSelectionChanged()
-{
-  if (m_address == PowerPC::ppcState.pc)
-  {
-    setStyleSheet(
-        QStringLiteral("QTableView::item:selected {background-color: #00FF00; color: #000000;}"));
-  }
-  else if (!styleSheet().isEmpty())
-  {
-    setStyleSheet(QString{});
-  }
-}
-
 void CodeViewWidget::OnReplaceInstruction()
 {
   const u32 addr = GetContextAddress();
@@ -886,6 +897,7 @@ void CodeViewWidget::OnRestoreInstruction()
 
 void CodeViewWidget::resizeEvent(QResizeEvent*)
 {
+  m_refresh = true;
   Update();
 }
 
@@ -929,24 +941,32 @@ void CodeViewWidget::wheelEvent(QWheelEvent* event)
 
 void CodeViewWidget::mousePressEvent(QMouseEvent* event)
 {
-  auto* item = itemAt(event->pos());
-  if (item == nullptr)
+  // itemPressed signal has poor responsiveness to fast clicking.
+  auto* item_sel = itemAt(event->pos());
+
+  if (item_sel == nullptr)
     return;
 
-  const u32 addr = item->data(Qt::UserRole).toUInt();
+  const int row = item_sel->row();
+  const u32 addr = item_sel->data(Qt::UserRole).toUInt();
 
   m_context_address = addr;
 
   switch (event->button())
   {
   case Qt::LeftButton:
-    if (column(item) == CODE_VIEW_COLUMN_BREAKPOINT)
+    if (column(item_sel) == CODE_VIEW_COLUMN_BREAKPOINT)
       ToggleBreakpoint();
     else
       SetAddress(addr, SetAddressUpdate::WithUpdate);
 
     Update();
     break;
+  case Qt::RightButton:
+    for (int i = 1; i <= 4; i++)
+    {
+      item(row, i)->setBackgroundColor(QColor(Qt::cyan));
+    }
   default:
     break;
   }
@@ -954,7 +974,8 @@ void CodeViewWidget::mousePressEvent(QMouseEvent* event)
 
 void CodeViewWidget::showEvent(QShowEvent* event)
 {
-  Update();
+  if (!m_refresh)
+    Update();
 }
 
 void CodeViewWidget::ToggleBreakpoint()
