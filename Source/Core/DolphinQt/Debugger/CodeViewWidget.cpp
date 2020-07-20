@@ -176,11 +176,15 @@ CodeViewWidget::CodeViewWidget()
           &CodeViewWidget::FontBasedSizing);
 
   connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, [this] {
-    m_address = PC;
+    if (Core::GetState() == Core::State::Paused)
+      m_address = PC;
+
     Update();
   });
   connect(Host::GetInstance(), &Host::UpdateDisasmDialog, this, [this] {
-    m_address = PC;
+    if (Core::GetState() == Core::State::Paused)
+      m_address = PC;
+
     Update();
   });
 
@@ -474,6 +478,9 @@ void CodeViewWidget::ReplaceAddress(u32 address, ReplaceWith replace)
 
 void CodeViewWidget::OnCopyTargetAddress()
 {
+  if (Core::GetState() != Core::State::Paused)
+    return;
+
   const std::string code_line = PowerPC::debug_interface.Disassemble(GetContextAddress());
 
   if (!IsInstructionLoadStore(code_line))
@@ -489,6 +496,9 @@ void CodeViewWidget::OnCopyTargetAddress()
 
 void CodeViewWidget::OnShowTargetInMemory()
 {
+  if (Core::GetState() != Core::State::Paused)
+    return;
+
   const std::string code_line = PowerPC::debug_interface.Disassemble(GetContextAddress());
 
   if (!IsInstructionLoadStore(code_line))

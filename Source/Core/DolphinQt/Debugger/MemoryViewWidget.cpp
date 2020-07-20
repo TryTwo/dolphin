@@ -48,19 +48,7 @@ MemoryViewWidget::MemoryViewWidget(QWidget* parent) : QTableWidget(parent)
   m_auto_update_action->setCheckable(true);
 
   connect(&Settings::Instance(), &Settings::DebugFontChanged, this, &QWidget::setFont);
-  connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, [this](Core::State state) {
-    if (state != Core::State::Paused)
-    {
-      m_paused = false;
-      return;
-    }
-
-    if (m_paused)
-      return;
-
-    m_paused = true;
-    Update();
-  });
+  connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, &MemoryViewWidget::Update);
   connect(this, &MemoryViewWidget::customContextMenuRequested, this,
           &MemoryViewWidget::OnContextMenu);
   connect(&Settings::Instance(), &Settings::ThemeChanged, this, &MemoryViewWidget::Update);

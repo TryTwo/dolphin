@@ -208,7 +208,7 @@ std::string PPCDebugInterface::Disassemble(u32 address) const
   if (!IsAlive())
     return "";
 
-  if (Core::GetState() == Core::State::Paused)
+  if (Core::GetState() == Core::State::Paused || Core::GetState() == Core::State::Running)
   {
     if (!PowerPC::HostIsRAMAddress(address))
     {

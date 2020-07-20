@@ -276,6 +276,9 @@ void RegisterWidget::PopulateTable()
         [i](u64 value) { rPS(i).SetPS1(value); });
   }
 
+  m_table->item(1, 0)->setText(QStringLiteral("sp"));
+  m_table->item(2, 0)->setText(QStringLiteral("rtoc"));
+
   for (int i = 0; i < 8; i++)
   {
     // IBAT registers

@@ -99,7 +99,7 @@ void MemoryWidget::CreateWidgets()
 
   m_search_address->setMaxLength(8);
   m_search_address_offset->setMaxLength(8);
-  m_data_preview->setBackgroundRole(QPalette::Base);
+  m_data_preview->setBackgroundRole(QPalette::AlternateBase);
   m_data_preview->setAutoFillBackground(true);
 
   m_search_address->setPlaceholderText(tr("Search Address"));
