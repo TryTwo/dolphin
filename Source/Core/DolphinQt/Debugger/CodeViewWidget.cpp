@@ -154,7 +154,6 @@ CodeViewWidget::CodeViewWidget()
   setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
 
-  horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
   verticalHeader()->hide();
   horizontalHeader()->setSectionResizeMode(CODE_VIEW_COLUMN_BREAKPOINT, QHeaderView::Fixed);
   horizontalHeader()->setStretchLastSection(true);
@@ -259,7 +258,6 @@ void CodeViewWidget::Update()
 
   m_updating = true;
 
-  clearSelection();
   if (rowCount() == 0)
     setRowCount(1);
 
@@ -375,11 +373,6 @@ void CodeViewWidget::Update()
     setItem(i, CODE_VIEW_COLUMN_PARAMETERS, param_item);
     setItem(i, CODE_VIEW_COLUMN_DESCRIPTION, description_item);
     setItem(i, CODE_VIEW_COLUMN_BRANCH_ARROWS, branch_item);
-
-    if (addr == GetAddress())
-    {
-      selectRow(addr_item->row());
-    }
   }
 
   CalculateBranchIndentation();
@@ -486,9 +479,12 @@ void CodeViewWidget::OnCopyTargetAddress()
   if (!IsInstructionLoadStore(code_line))
     return;
 
-  const u32 addr = PowerPC::debug_interface.GetMemoryAddressFromInstruction(code_line);
+  const std::optional<u32> addr =
+      PowerPC::debug_interface.GetMemoryAddressFromInstruction(code_line);
 
-  QApplication::clipboard()->setText(QStringLiteral("%1").arg(addr, 8, 16, QLatin1Char('0')));
+  if (addr)
+    QApplication::clipboard()->setText(
+        QStringLiteral("%1").arg(addr.value(), 8, 16, QLatin1Char('0')));
 }
 
 void CodeViewWidget::OnShowTargetInMemory()
@@ -498,9 +494,11 @@ void CodeViewWidget::OnShowTargetInMemory()
   if (!IsInstructionLoadStore(code_line))
     return;
 
-  const u32 addr = PowerPC::debug_interface.GetMemoryAddressFromInstruction(code_line);
+  const std::optional<u32> addr =
+      PowerPC::debug_interface.GetMemoryAddressFromInstruction(code_line);
 
-  emit ShowMemory(addr);
+  if (addr)
+    emit ShowMemory(addr.value());
 }
 
 void CodeViewWidget::OnContextMenu()
@@ -570,6 +568,12 @@ void CodeViewWidget::OnContextMenu()
                        show_target_address, function_action, go_start, go_end, ppc_action,
                        insert_blr_action, insert_nop_action, replace_action})
     action->setEnabled(running);
+
+  if (Core::GetState() != Core::State::Paused)
+  {
+    copy_target_address->setEnabled(false);
+    show_target_address->setEnabled(false);
+  }
 
   symbol_edit_action->setEnabled(has_symbol);
   symbol_delete_action->setEnabled(has_symbol);

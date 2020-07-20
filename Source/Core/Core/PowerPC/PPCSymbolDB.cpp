@@ -420,7 +420,7 @@ bool PPCSymbolDB::LoadMap(const std::string& filename, bool bad)
       // some entries in the table have a function name followed by " (entry of " followed by a
       // container name, followed by ")"
       // instead of a space followed by a number followed by a space followed by a name
-      const std::string stripped_line = StripSpaces(line);
+      const std::string_view stripped_line = StripSpaces(line);
       if (length > 27 && line[27] != ' ' && strstr(line, "(entry of "))
       {
         alignment = 0;

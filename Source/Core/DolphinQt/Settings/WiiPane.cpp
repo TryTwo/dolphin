@@ -195,7 +195,7 @@ void WiiPane::CreateWiiRemoteSettings()
   // Wii menu saves values from 1 to 5.
   m_wiimote_ir_sensitivity->setMinimum(1);
   m_wiimote_ir_sensitivity->setMaximum(5);
-  m_wiimote_ir_sensitivity->setMinimumHeight(sliderh);
+  m_wiimote_ir_sensitivity->setMinimumHeight(22);
   m_wiimote_ir_sensitivity->setTickInterval(1);
   m_wiimote_ir_sensitivity->setTickPosition(QSlider::TicksBelow);
 
