@@ -483,6 +483,12 @@ void MemoryViewWidget::mousePressEvent(QMouseEvent* event)
 
   m_context_address = addr;
 
+  if (column(item) >= 1 && event->button() == Qt::RightButton)
+  {
+    clearSelection();
+    item->setSelected(true);
+  }
+
   switch (event->button())
   {
   case Qt::LeftButton:
@@ -490,10 +496,12 @@ void MemoryViewWidget::mousePressEvent(QMouseEvent* event)
     if (event->modifiers() & Qt::ShiftModifier)
     {
       clearSelection();
-      item->setSelected(true);
 
+      m_target = addr;
       QString setaddr = QStringLiteral("%1").arg(addr, 8, 16, QLatin1Char('0'));
       emit SendSearchValue(setaddr);
+
+      Update();
     }
     else if (event->modifiers() & Qt::ControlModifier)
     {
@@ -512,10 +520,18 @@ void MemoryViewWidget::mousePressEvent(QMouseEvent* event)
     else
     {
       // Scroll with LClick
+      u32 scroll_addr = addr;
+
       if (GetColumnCount(m_type) == 2)
-        SetAddress(addr & 0xFFFFFFFC);
+        scroll_addr = addr & 0xFFFFFFFC;
       else
-        SetAddress(addr & 0xFFFFFFF0);
+        scroll_addr = addr & 0xFFFFFFF0;
+
+      if (m_address == scroll_addr)
+        return;
+
+      // SetAddress is skipped because we don't want to update the target address.
+      m_address = scroll_addr;
 
       Update();
     }

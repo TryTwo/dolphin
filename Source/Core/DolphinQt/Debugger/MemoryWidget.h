@@ -12,7 +12,6 @@
 
 class MemoryViewWidget;
 class QCheckBox;
-class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QListWidget;
@@ -91,6 +90,7 @@ private:
   QRadioButton* m_input_ascii;
   QRadioButton* m_input_float;
   QRadioButton* m_input_hex;
+  QRadioButton* m_input_decimal;
   QLabel* m_result_label;
   QCheckBox* m_find_mem2;
 
@@ -111,7 +111,6 @@ private:
   QRadioButton* m_bp_write_only;
   QCheckBox* m_bp_log_check;
 
-  QGroupBox* m_note_group;
   QLineEdit* m_search_notes;
   QListWidget* m_note_list;
   QString m_note_filter;

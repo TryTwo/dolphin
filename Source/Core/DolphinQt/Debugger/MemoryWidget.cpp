@@ -5,6 +5,7 @@
 #include "DolphinQt/Debugger/MemoryWidget.h"
 
 #include <cctype>
+#include <fmt/format.h>
 #include <string>
 
 #include <QCheckBox>
@@ -19,6 +20,7 @@
 #include <QScrollArea>
 #include <QSpacerItem>
 #include <QSplitter>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QVBoxLayout>
 
@@ -61,7 +63,7 @@ MemoryWidget::MemoryWidget(QWidget* parent) : QDockWidget(parent)
   connect(&Settings::Instance(), &Settings::DebugModeToggled,
           [this](bool enabled) { setHidden(!enabled || !Settings::Instance().IsMemoryVisible()); });
 
-  // connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, &MemoryWidget::Update);
+  connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, &MemoryWidget::Update);
 
   LoadSettings();
 
@@ -112,18 +114,49 @@ void MemoryWidget::CreateWidgets()
   m_input_ascii = new QRadioButton(tr("ASCII"));
   m_input_float = new QRadioButton(tr("Float"));
   m_input_hex = new QRadioButton(tr("Hex"));
+  m_input_decimal = new QRadioButton(tr("Decimal"));
 
   input_group->setLayout(input_layout);
   input_layout->addWidget(m_input_ascii, 0, 0);
   input_layout->addWidget(m_input_float, 0, 1);
   input_layout->addWidget(m_input_hex, 1, 0);
+  input_layout->addWidget(m_input_decimal, 1, 1);
   input_layout->setSpacing(1);
 
+  // Tab Widgt for Dump and Notes
+  auto* note_tab = new QTabWidget;
+
   // Dump
+  QWidget* dump_group = new QWidget();
+  auto* dump_layout = new QVBoxLayout;
   m_dump_mram = new QPushButton(tr("Dump &MRAM"));
   m_dump_exram = new QPushButton(tr("Dump &ExRAM"));
   m_dump_aram = new QPushButton(tr("Dump &ARAM"));
   m_dump_fake_vmem = new QPushButton(tr("Dump &FakeVMEM"));
+
+  dump_group->setAutoFillBackground(true);
+  dump_group->setLayout(dump_layout);
+  dump_layout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
+  dump_layout->addWidget(m_dump_mram);
+  dump_layout->addWidget(m_dump_exram);
+  dump_layout->addWidget(m_dump_aram);
+  dump_layout->addWidget(m_dump_fake_vmem);
+  dump_layout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
+
+  // Notes
+  QWidget* note_group = new QWidget();
+  auto* note_layout = new QVBoxLayout;
+  m_note_list = new QListWidget;
+  m_search_notes = new QLineEdit;
+  m_search_notes->setPlaceholderText(tr("Filter Note List"));
+
+  note_group->setAutoFillBackground(true);
+  note_group->setLayout(note_layout);
+  note_layout->addWidget(m_note_list);
+  note_layout->addWidget(m_search_notes);
+
+  note_tab->addTab(note_group, tr("Notes"));
+  note_tab->addTab(dump_group, tr("Dump"));
 
   // Search Options
   auto* search_group = new QGroupBox(tr("Search"));
@@ -205,17 +238,6 @@ void MemoryWidget::CreateWidgets()
   conversion_layout->addWidget(m_float_convert);
   conversion_layout->addWidget(m_hex_convert);
 
-  // Notes
-  m_note_group = new QGroupBox(tr("Notes"));
-  auto* note_layout = new QVBoxLayout;
-  m_note_list = new QListWidget;
-  m_search_notes = new QLineEdit;
-  m_search_notes->setPlaceholderText(tr("Filter Note List"));
-
-  m_note_group->setLayout(note_layout);
-  note_layout->addWidget(m_note_list);
-  note_layout->addWidget(m_search_notes);
-
   // Sidebar
   auto* sidebar = new QWidget;
   auto* sidebar_layout = new QVBoxLayout;
@@ -228,16 +250,12 @@ void MemoryWidget::CreateWidgets()
   sidebar_layout->addWidget(input_group);
   sidebar_layout->addWidget(m_data_preview);
   sidebar_layout->addWidget(m_set_value);
-  sidebar_layout->addItem(new QSpacerItem(1, 26));
-  sidebar_layout->addItem(new QSpacerItem(1, 32));
-  sidebar_layout->addWidget(m_dump_mram);
-  sidebar_layout->addWidget(m_dump_exram);
-  sidebar_layout->addWidget(m_dump_aram);
-  sidebar_layout->addWidget(m_dump_fake_vmem);
+  sidebar_layout->addItem(new QSpacerItem(1, 16));
   sidebar_layout->addWidget(search_group);
   sidebar_layout->addWidget(datatype_group);
+  sidebar_layout->addWidget(note_tab);
   sidebar_layout->addWidget(bp_group);
-  sidebar_layout->addWidget(m_note_group);
+  // sidebar_layout->addWidget(m_note_group);
   sidebar_layout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
   sidebar_layout->addLayout(conversion_layout);
 
@@ -271,7 +289,7 @@ void MemoryWidget::ConnectWidgets()
   connect(m_data_edit, &QLineEdit::textChanged, this, &MemoryWidget::ValidateSearchValue);
   connect(m_align_switch, &QCheckBox::stateChanged, this, &MemoryWidget::OnAlignmentChanged);
 
-  for (auto* radio : {m_input_ascii, m_input_float, m_input_hex})
+  for (auto* radio : {m_input_ascii, m_input_float, m_input_hex, m_input_decimal})
     connect(radio, &QRadioButton::toggled, this, &MemoryWidget::ValidateSearchValue);
 
   connect(m_set_value, &QPushButton::clicked, this, &MemoryWidget::OnSetValue);
@@ -421,6 +439,7 @@ void MemoryWidget::OnTypeChanged()
 
   m_memory_view->SetType(type);
 
+  ValidateSearchValue();
   SaveSettings();
 }
 
@@ -488,6 +507,11 @@ void MemoryWidget::OnSearchAddress()
 
 void MemoryWidget::ValidateSearchValue()
 {
+  m_data_preview->clear();
+
+  if (m_data_edit->text().isEmpty())
+    return;
+
   QFont font;
   QPalette palette;
   m_data_preview->clear();
@@ -518,9 +542,13 @@ void MemoryWidget::ValidateSearchValue()
         hex_string.insert(hsize - i, QLatin1Char{' '});
     }
   }
-  else if (m_input_hex->isChecked() && !m_data_edit->text().isEmpty())
+  else if (m_input_hex->isChecked() || m_input_decimal->isChecked())
   {
-    u64 value = m_data_edit->text().toULongLong(&good, 16);
+    u64 value = 0;
+    if (m_input_decimal->isChecked())
+      value = m_data_edit->text().toULongLong(&good, 10);
+    else
+      value = m_data_edit->text().toULongLong(&good, 16);
 
     if (!good)
     {
@@ -602,10 +630,16 @@ void MemoryWidget::OnSetValue()
   }
   else
   {
-    bool good_value;
-    u64 value = m_data_edit->text().toULongLong(&good_value, 16);
+    bool good;
 
-    if (!good_value)
+    u64 value = 0;
+
+    if (m_input_decimal->isChecked())
+      value = m_data_edit->text().toULongLong(&good, 10);
+    else
+      value = m_data_edit->text().toULongLong(&good, 16);
+
+    if (!good)
     {
       ModalMessageBox::critical(this, tr("Error"), tr("Bad value provided."));
       return;
@@ -658,11 +692,8 @@ void MemoryWidget::UpdateNotes()
 {
   if (g_symbolDB.Notes().empty())
   {
-    m_note_group->hide();
     return;
   }
-
-  m_note_group->show();
 
   QString selection = m_note_list->selectedItems().isEmpty() ?
                           QStringLiteral("") :
@@ -763,7 +794,28 @@ std::vector<u8> MemoryWidget::GetValueData() const
   else
   {
     // Accepts any amount of bytes.
-    std::string search_prep = m_data_edit->text().toStdString();
+    std::string search_prep;
+
+    if (m_input_decimal->isChecked())
+    {
+      bool good = true;
+      u32 value = m_data_edit->text().toULongLong(&good, 10);
+
+      if (good)
+      {
+        if (m_type_u8->isChecked())
+          search_prep = fmt::format("{0:02x}", value);
+        else if (m_type_u16->isChecked())
+          search_prep = fmt::format("{0:04x}", value);
+        else
+          search_prep = fmt::format("{0:08x}", value);
+      }
+    }
+    else
+    {
+      search_prep = m_data_edit->text().toStdString();
+    }
+
     for (size_t i = 0; i <= search_prep.length() - 2; i = i + 2)
     {
       if (!isxdigit(search_prep[i]) || !isxdigit(search_prep[i + 1]))
@@ -905,15 +957,15 @@ void MemoryWidget::OnFloatToHex(bool float_in)
     float_val = m_float_convert->text().toFloat(&good);
     if (!good)
       return;
-    u32* out = (u32*)&float_val;
-    m_hex_convert->setText(QStringLiteral("%1").arg(*out, 0, 16));
+    u32 out = Common::BitCast<u32>(float_val);
+    m_hex_convert->setText(QStringLiteral("%1").arg(out, 0, 16));
   }
   else
   {
     u32 hex_val = m_hex_convert->text().toUInt(&good, 16);
     if (!good || m_hex_convert->text().size() != 8)
       return;
-    float_val = *((float*)&hex_val);
+    float_val = Common::BitCast<float>(hex_val);
     m_float_convert->setText(QString::number(float_val));
   }
 }
