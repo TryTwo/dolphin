@@ -135,6 +135,7 @@ struct VideoConfig final
   bool bSkipPresentingDuplicateXFBs;
   bool bCopyEFBScaled;
   unsigned int iEFBExclude;
+  bool bEFBExcludeCommon;
   bool bEFBExcludeEnabled;
   int iSafeTextureCache_ColorSamples;
   float fAspectRatioHackW, fAspectRatioHackH;

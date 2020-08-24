@@ -122,6 +122,7 @@ extern const Info<bool> GFX_HACK_SKIP_DUPLICATE_XFBS;
 extern const Info<bool> GFX_HACK_COPY_EFB_SCALED;
 extern const Info<int> GFX_EFB_SCALE_EXCLUDE;
 extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_ENABLED;
+extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_COMMON;
 extern const Info<bool> GFX_HACK_EFB_EMULATE_FORMAT_CHANGES;
 extern const Info<bool> GFX_HACK_VERTEX_ROUDING;
 

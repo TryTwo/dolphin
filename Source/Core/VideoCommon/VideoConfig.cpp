@@ -106,6 +106,7 @@ void VideoConfig::Refresh()
   bSSAA = Config::Get(Config::GFX_SSAA);
   iEFBScale = Config::Get(Config::GFX_EFB_SCALE);
   iEFBExclude = Config::Get(Config::GFX_EFB_SCALE_EXCLUDE);
+  bEFBExcludeCommon = Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_COMMON);
   bEFBExcludeEnabled = Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
   bTexFmtOverlayEnable = Config::Get(Config::GFX_TEXFMT_OVERLAY_ENABLE);
   bTexFmtOverlayCenter = Config::Get(Config::GFX_TEXFMT_OVERLAY_CENTER);

@@ -72,6 +72,8 @@ void AdvancedWidget::CreateWidgets()
   m_prefetch_custom_textures =
       new GraphicsBool(tr("Prefetch Custom Textures"), Config::GFX_CACHE_HIRES_TEXTURES);
   m_dump_efb_target = new GraphicsBool(tr("Dump EFB Target"), Config::GFX_DUMP_EFB_TARGET);
+  // Having it possibly start enabled leads to accidental massive efb dumps.
+  m_dump_efb_target->setChecked(false);
   m_disable_vram_copies =
       new GraphicsBool(tr("Disable EFB VRAM Copies"), Config::GFX_HACK_DISABLE_COPY_TO_VRAM);
 
@@ -133,28 +135,24 @@ void AdvancedWidget::CreateWidgets()
   misc_layout->addWidget(m_borderless_fullscreen, 1, 1);
 #endif
 
+  // Scaled EFB exclusions
   auto* efb_box = new QGroupBox(tr("Scaled EFB Copy Exclusions"));
-  auto* efb_layout = new QHBoxLayout();
-  auto* efb_layoutright = new QHBoxLayout();
+  auto* efb_layout = new QGridLayout();
   efb_box->setLayout(efb_layout);
   m_scaled_efb_exclude_enable =
       new GraphicsBool(tr("Don't scale EFB copy if:"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
+  m_scaled_efb_exclude_common_enable =
+      new GraphicsBool(tr("Only exclude common bloom sizes"), Config::GFX_EFB_SCALE_EXCLUDE_COMMON);
   m_scaled_efb_exclude_slider = new GraphicsSlider(0, 630, Config::GFX_EFB_SCALE_EXCLUDE, 100);
   m_scaled_efb_exclude_label = new QLabel();
-
-  if (!m_scaled_efb_exclude_enable->isChecked())
-  {
-    m_scaled_efb_exclude_slider->setEnabled(false);
-    m_scaled_efb_exclude_label->setEnabled(false);
-  }
 
   m_scaled_efb_exclude_label->setContentsMargins(40, 0, 0, 0);
   m_scaled_efb_exclude_slider->setFixedWidth(250);
 
-  efb_layoutright->addWidget(m_scaled_efb_exclude_label);
-  efb_layoutright->addWidget(m_scaled_efb_exclude_slider);
-  efb_layout->addWidget(m_scaled_efb_exclude_enable);
-  efb_layout->addLayout(efb_layoutright);
+  efb_layout->addWidget(m_scaled_efb_exclude_enable, 0, 0);
+  efb_layout->addWidget(m_scaled_efb_exclude_label, 0, 1);
+  efb_layout->addWidget(m_scaled_efb_exclude_slider, 0, 2);
+  efb_layout->addWidget(m_scaled_efb_exclude_common_enable, 1, 0);
 
   // Experimental.
   auto* experimental_box = new QGroupBox(tr("Experimental"));
@@ -176,6 +174,13 @@ void AdvancedWidget::CreateWidgets()
   main_layout->addStretch();
 
   setLayout(main_layout);
+
+  if (!m_scaled_efb_exclude_enable->isChecked())
+  {
+    m_scaled_efb_exclude_slider->setEnabled(false);
+    m_scaled_efb_exclude_label->setEnabled(false);
+    m_scaled_efb_exclude_common_enable->setEnabled(false);
+  }
 }
 
 void AdvancedWidget::ConnectWidgets()
@@ -186,6 +191,7 @@ void AdvancedWidget::ConnectWidgets()
   connect(m_scaled_efb_exclude_enable, &QCheckBox::toggled, [=](bool checked) {
     m_scaled_efb_exclude_slider->setEnabled(checked);
     m_scaled_efb_exclude_label->setEnabled(checked);
+    m_scaled_efb_exclude_common_enable->setEnabled(checked);
   });
 
   // A &QSlider signal won't fire when game ini's trigger a change, due to a signalblock in

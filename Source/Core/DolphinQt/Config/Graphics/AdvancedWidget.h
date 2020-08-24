@@ -57,6 +57,7 @@ private:
 
   // EFB exclusions
   QCheckBox* m_scaled_efb_exclude_enable;
+  QCheckBox* m_scaled_efb_exclude_common_enable;
   QSlider* m_scaled_efb_exclude_slider;
   QLabel* m_scaled_efb_exclude_label;
 

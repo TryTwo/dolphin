@@ -2082,10 +2082,14 @@ void TextureCacheBase::CopyRenderTargetToTexture(
   u32 scaled_tex_w = g_renderer->EFBToScaledX(width);
   u32 scaled_tex_h = g_renderer->EFBToScaledY(height);
 
-  if (width < g_ActiveConfig.iEFBExclude && g_ActiveConfig.bEFBExcludeEnabled && !is_xfb_copy)
+  if (g_ActiveConfig.bEFBExcludeEnabled && !is_xfb_copy && width <= g_ActiveConfig.iEFBExclude)
   {
-    scaled_tex_w = tex_w;
-    scaled_tex_h = tex_h;
+    if (!g_ActiveConfig.bEFBExcludeCommon || width == 20 || width == 40 || width == 80 ||
+        width == 160 || width == 320)
+    {
+      scaled_tex_w = tex_w;
+      scaled_tex_h = tex_h;
+    }
   }
 
   if (scaleByHalf)
