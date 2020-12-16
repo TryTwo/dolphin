@@ -582,6 +582,7 @@ PUBLIC
   cubeb
   discio
   enet
+  expr
   inputcommon
   ${MBEDTLS_LIBRARIES}
   pugixml
