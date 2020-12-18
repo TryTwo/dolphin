@@ -133,9 +133,16 @@ BreakPoints::TBreakPointsStr BreakPoints::GetStrings() const
       std::ostringstream ss;
       ss.imbue(std::locale::classic());
 
-      ss << std::hex << bp.address << " " << (bp.is_enabled ? "n" : "")
-         << (bp.log_on_hit ? "l" : "") << (bp.break_on_hit ? "b" : "");
-      bp_strings.push_back(ss.str());
+      ss << "$" << fmt::format("{:08x}", bp.address) << " ";
+      if (bp.is_enabled)
+        ss << "n";
+      if (bp.log_on_hit)
+        ss << "l";
+      if (bp.break_on_hit)
+        ss << "b";
+      if (!bp.condition.empty())
+        ss << "c " << bp.condition;
+      bp_strings.emplace_back(ss.str());
     }
   }
 
@@ -151,11 +158,19 @@ void BreakPoints::AddFromStrings(const TBreakPointsStr& bp_strings)
     std::istringstream iss(bp_string);
     iss.imbue(std::locale::classic());
 
+    if (iss.peek() == '$')
+      iss.ignore();
+
     iss >> std::hex >> bp.address;
     iss >> flags;
     bp.is_enabled = flags.find('n') != flags.npos;
     bp.log_on_hit = flags.find('l') != flags.npos;
     bp.break_on_hit = flags.find('b') != flags.npos;
+    if (flags.find('c') != std::string::npos)
+    {
+      iss >> std::ws;
+      std::getline(iss, bp.condition);
+    }
     bp.is_temporary = false;
     Add(bp);
   }

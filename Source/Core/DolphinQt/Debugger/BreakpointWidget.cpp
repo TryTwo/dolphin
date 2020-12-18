@@ -86,7 +86,7 @@ void BreakpointWidget::CreateWidgets()
   m_table = new QTableWidget;
   m_table->setTabKeyNavigation(false);
   m_table->setContentsMargins(0, 0, 0, 0);
-  m_table->setColumnCount(5);
+  m_table->setColumnCount(6);
   m_table->setSelectionMode(QAbstractItemView::SingleSelection);
   m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
   m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -160,7 +160,7 @@ void BreakpointWidget::Update()
   m_table->clear();
 
   m_table->setHorizontalHeaderLabels(
-      {tr("Active"), tr("Type"), tr("Function"), tr("Address"), tr("Flags")});
+      {tr("Active"), tr("Type"), tr("Function"), tr("Address"), tr("Flags"), tr("Condition")});
 
   int i = 0;
   m_table->setRowCount(i);
@@ -202,6 +202,8 @@ void BreakpointWidget::Update()
       flags.append(QLatin1Char{'l'});
 
     m_table->setItem(i, 4, create_item(flags));
+
+    m_table->setItem(i, 5, create_item(QString::fromStdString(bp.condition)));
 
     i++;
   }
