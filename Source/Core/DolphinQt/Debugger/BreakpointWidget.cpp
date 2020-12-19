@@ -15,6 +15,7 @@
 #include "Core/ConfigManager.h"
 #include "Core/Core.h"
 #include "Core/PowerPC/BreakPoints.h"
+#include "Core/PowerPC/Expression.h"
 #include "Core/PowerPC/PPCSymbolDB.h"
 #include "Core/PowerPC/PowerPC.h"
 
@@ -203,7 +204,12 @@ void BreakpointWidget::Update()
 
     m_table->setItem(i, 4, create_item(flags));
 
-    m_table->setItem(i, 5, create_item(QString::fromStdString(bp.condition)));
+    QString condition;
+
+    if (bp.condition)
+      condition = QString::fromStdString(bp.condition->GetText());
+
+    m_table->setItem(i, 5, create_item(condition));
 
     i++;
   }
@@ -395,7 +401,8 @@ void BreakpointWidget::AddBP(u32 addr)
 void BreakpointWidget::AddBP(u32 addr, bool temp, bool break_on_hit, bool log_on_hit,
                              const QString& condition)
 {
-  PowerPC::breakpoints.Add(addr, temp, break_on_hit, log_on_hit, condition.toStdString());
+  PowerPC::breakpoints.Add(addr, temp, break_on_hit, log_on_hit,
+                           Expression::TryParse(condition.toUtf8().constData()));
 
   emit BreakpointsChanged();
   Update();
