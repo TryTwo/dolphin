@@ -2100,6 +2100,12 @@ void TextureCacheBase::CopyRenderTargetToTexture(
   u32 scaled_tex_w = g_renderer->EFBToScaledX(width);
   u32 scaled_tex_h = g_renderer->EFBToScaledY(height);
 
+  if (width < g_ActiveConfig.iEFBExclude && g_ActiveConfig.iEFBExcludeEnabled && !is_xfb_copy)
+  {
+    scaled_tex_w = tex_w;
+    scaled_tex_h = tex_h;
+  }
+
   if (scaleByHalf)
   {
     tex_w /= 2;
@@ -2428,7 +2434,6 @@ void TextureCacheBase::UninitializeXFBMemory(u8* dst, u32 stride, u32 bytes_per_
   // which is why we still set uninitialized xfb memory to fuchsia
   // (Y=1,U=254,V=254) instead of dark green (Y=0,U=0,V=0) in YUV
   // like is done in the EFB path.
-
 #if defined(_M_X86) || defined(_M_X86_64)
   __m128i sixteenBytes = _mm_set1_epi16((s16)(u16)0xFE01);
 #endif

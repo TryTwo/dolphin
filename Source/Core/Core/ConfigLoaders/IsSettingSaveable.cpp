@@ -34,7 +34,7 @@ bool IsSettingSaveable(const Config::Location& config_location)
     }
   }
 
-  static constexpr std::array<const Config::Location*, 17> s_setting_saveable = {
+  static constexpr std::array<const Config::Location*, 19> s_setting_saveable = {
       // Main.Core
 
       &Config::MAIN_DEFAULT_ISO.GetLocation(),
@@ -50,6 +50,8 @@ bool IsSettingSaveable(const Config::Location& config_location)
       &Config::MAIN_GFX_BACKEND.GetLocation(),
       &Config::MAIN_ENABLE_SAVESTATES.GetLocation(),
       &Config::MAIN_FALLBACK_REGION.GetLocation(),
+      &Config::GFX_EFB_SCALE_EXCLUDE.GetLocation(),
+      &Config::GFX_EFB_SCALE_EXCLUDE_ENABLED.GetLocation(),
 
       // Main.Interface
 
