@@ -401,6 +401,8 @@ private:
   // We store this in the class so that the same staging texture can be used for multiple
   // readbacks, saving the overhead of allocating a new buffer every time.
   std::unique_ptr<AbstractStagingTexture> m_readback_texture;
+
+  u8* m_bloom_dst_check = nullptr;
 };
 
 extern std::unique_ptr<TextureCacheBase> g_texture_cache;
