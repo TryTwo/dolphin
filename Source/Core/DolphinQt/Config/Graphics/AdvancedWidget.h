@@ -81,6 +81,7 @@ private:
   // EFB exclusions
   ConfigBool* m_scaled_efb_exclude_enable;
   ConfigBool* m_scaled_efb_exclude_alt;
+  ConfigBool* m_scaled_efb_exclude_blur;
   ConfigSlider* m_scaled_efb_exclude_slider_width;
   ConfigInteger* m_scaled_efb_exclude_integer_width;
 };

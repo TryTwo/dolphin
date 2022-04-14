@@ -198,6 +198,7 @@ void AdvancedWidget::CreateWidgets()
 		new ConfigBool(tr("Enabled"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
 	m_scaled_efb_exclude_alt = new ConfigBool(
 		tr("Use alternative method to exclude fewer EFB copies"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
+	m_scaled_efb_exclude_blur = new ConfigBool(tr("Blur Copy"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
 	m_scaled_efb_exclude_slider_width =
 		new ConfigSlider(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
 	m_scaled_efb_exclude_integer_width =
@@ -207,6 +208,7 @@ void AdvancedWidget::CreateWidgets()
 	{
 		m_scaled_efb_exclude_slider_width->setEnabled(false);
 		m_scaled_efb_exclude_alt->setEnabled(false);
+		m_scaled_efb_exclude_blur->setEnabled(false);
 		m_scaled_efb_exclude_integer_width->setEnabled(false);
 	}
 
@@ -216,6 +218,7 @@ void AdvancedWidget::CreateWidgets()
 	efb_layout_top->addWidget(m_scaled_efb_exclude_enable);
 	efb_layout_top->addStretch();
 	efb_layout_top->addWidget(m_scaled_efb_exclude_alt);
+	efb_layout_top->addWidget(m_scaled_efb_exclude_blur);
 	efb_layout_width_integer->addWidget(new QLabel(tr("Width < ")));
 	efb_layout_width_integer->addWidget(m_scaled_efb_exclude_integer_width);
 	efb_layout_width_integer->addWidget(m_scaled_efb_exclude_slider_width);
@@ -256,6 +259,7 @@ void AdvancedWidget::ConnectWidgets()
 	connect(m_scaled_efb_exclude_enable, &QCheckBox::toggled, [=](bool checked) {
 		m_scaled_efb_exclude_slider_width->setEnabled(checked);
 		m_scaled_efb_exclude_alt->setEnabled(checked);
+		m_scaled_efb_exclude_blur->setEnabled(checked);
 		m_scaled_efb_exclude_integer_width->setEnabled(checked);
 		});
 
@@ -481,6 +485,12 @@ void AdvancedWidget::AddDescriptions()
 		"Start on the left and slowly move the slider to the right until the graphical issue "
 		"improves. Values of 161, 300 or 630 may "
 		"be good.");
+	static const char TR_SCALED_EFB_EXCLUDE_BLUR_DESCRIPTION[] =
+		QT_TR_NOOP("Allows EFB to be upscaled, but then Blurs it to produce a higher quality bloom. "
+			"Fixes shimmering issues that the normal bloom exclusions cause in various games "
+			"with large bloom EFBs. Can fail to fix bloom in games with small bloom EFBs."
+			"<br><br><dolphin_emphasis>If unsure, leave this "
+			"unchecked.</dolphin_emphasis>");
 	static const char TR_SCALED_EFB_EXCLUDE_ALT_DESCRIPTION[] =
 		QT_TR_NOOP("Only excludes textures that are written on top of eachother. Fixes low-res "
 			"issues in some games."
@@ -532,6 +542,8 @@ void AdvancedWidget::AddDescriptions()
 	m_scaled_efb_exclude_slider_width->SetDescription(tr(TR_SCALED_EFB_EXCLUDE_WIDTH_DESCRIPTION));
 	m_scaled_efb_exclude_alt->SetTitle(tr("Reduce amount of exclusions"));
 	m_scaled_efb_exclude_alt->SetDescription(tr(TR_SCALED_EFB_EXCLUDE_ALT_DESCRIPTION));
+	m_scaled_efb_exclude_blur->SetTitle(tr("Upscale and blur"));
+	m_scaled_efb_exclude_blur->SetDescription(tr(TR_SCALED_EFB_EXCLUDE_BLUR_DESCRIPTION));
 #ifdef HAVE_FFMPEG
 	m_dump_use_ffv1->SetDescription(tr(TR_USE_FFV1_DESCRIPTION));
 #endif
