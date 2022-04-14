@@ -130,6 +130,7 @@ extern const Info<bool> GFX_HACK_FAST_TEXTURE_SAMPLING;
 // Graphics.Hacks EFB Scale exclusion settings
 extern const Info<int> GFX_EFB_SCALE_EXCLUDE_WIDTH;
 extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_ALT;
+extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_BLUR;
 extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_ENABLED;
 
 // Graphics.GameSpecific
