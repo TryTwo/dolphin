@@ -10,6 +10,11 @@ class ConfigChoice;
 class ConfigInteger;
 class GameConfigWidget;
 class GraphicsWindow;
+class QCheckBox;
+class QComboBox;
+class QSpinBox;
+class ToolTipCheckBox;
+class ConfigSlider;
 
 namespace Config
 {
@@ -77,5 +82,9 @@ private:
   ConfigBool* m_defer_efb_access_invalidation;
   ConfigBool* m_manual_texture_sampling;
 
-  Config::Layer* m_game_layer = nullptr;
+  // EFB exclusions
+  ConfigBool* m_scaled_efb_exclude_enable;
+  ConfigBool* m_scaled_efb_exclude_alt;
+  ConfigSlider* m_scaled_efb_exclude_slider_width;
+  ConfigInteger* m_scaled_efb_exclude_integer_width;
 };
