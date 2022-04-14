@@ -491,6 +491,46 @@ std::string GenerateFormatConversionShader(EFBReinterpretType convtype, u32 samp
   return code.GetBuffer();
 }
 
+std::string GenerateTextureBlurShader()
+{
+  ShaderCode code;
+  EmitUniformBufferDeclaration(code);
+  code.Write("{{"
+             "  int width;\n"
+             "  int height;\n"
+             "  int blur_radius;\n"
+             "}};\n\n");
+
+  EmitSamplerDeclarations(code, 0, 1, false);
+  EmitPixelMainDeclaration(code, 1, 0, "float4", "", true);
+  code.Write("  {{\n"
+             "  int layer = int(v_tex0.z);\n"
+             "  int xs = width;\n"
+             "  int ys = height;\n"
+             "  int r = blur_radius;\n"
+             "  int2 pos = int2(frag_coord.xy);\n"
+             "  int x; int y;\n"
+             "  float4 count = float4(0.0,0.0,0.0,0.0);\n"
+             "  float4 col = float4(0.0,0.0,0.0,0.0);\n");
+  code.Write("  for (x = -r; x <= r; x++)\n "
+             "  {{\n "
+             "  for (y = -r; y <= r; y++)\n"
+             "  {{\n"
+             "  if (pos.x + x <= xs && pos.y + y <= ys)\n"
+             "  {{\n"
+             "  count += float4(1.0,1.0,1.0,1.0);\n"
+             "  int3 coords = int3(int2(pos.x + x, pos.y + y), layer);\n");
+
+  if (GetAPIType() == APIType::D3D)
+    code.Write("  col += tex0.Load(int4(coords, 0));\n");
+  else
+    code.Write("  col += texelFetch(samp0, coords, 0);\n");
+
+  code.Write("  }}}}}}\n");
+  code.Write("ocol0 = col / count;}}\n");
+  return code.GetBuffer();
+}
+
 std::string GenerateTextureReinterpretShader(TextureFormat from_format, TextureFormat to_format)
 {
   ShaderCode code;
