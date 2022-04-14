@@ -312,6 +312,8 @@ private:
 
   TCacheEntry* ApplyPaletteToEntry(TCacheEntry* entry, const u8* palette, TLUTFormat tlutfmt);
 
+  void BlurCopy(TCacheEntry* existing_entry);
+
   TCacheEntry* ReinterpretEntry(const TCacheEntry* existing_entry, TextureFormat new_format);
 
   TCacheEntry* DoPartialTextureUpdates(TCacheEntry* entry_to_update, const u8* palette,

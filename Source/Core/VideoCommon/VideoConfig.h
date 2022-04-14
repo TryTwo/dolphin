@@ -135,6 +135,7 @@ struct VideoConfig final
   int iSaveTargetId = 0;  // TODO: Should be dropped
   u32 iMissingColorValue = 0;
   bool bFastTextureSampling = false;
+  bool bEFBBlur = false;
   unsigned int iEFBExcludeWidth = 0;
   bool bEFBExcludeAlt = false;
   bool bEFBExcludeEnabled = false;
