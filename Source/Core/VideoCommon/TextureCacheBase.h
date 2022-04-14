@@ -463,6 +463,8 @@ private:
       AfterFrameEvent::Register([this](Core::System&) { OnFrameEnd(); }, "TextureCache");
 
   VideoCommon::TextureUtils::TextureDumper m_texture_dumper;
+
+  u8* m_bloom_dst_check = nullptr;
 };
 
 extern std::unique_ptr<TextureCacheBase> g_texture_cache;
