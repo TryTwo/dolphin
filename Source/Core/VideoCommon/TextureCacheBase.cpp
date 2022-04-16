@@ -361,6 +361,7 @@ void TextureCacheBase::BlurCopy(TCacheEntry* existing_entry)
     u32 width;
     u32 height;
     u32 blur_radius;
+    float bloom_strength;
   };
 
   Uniforms uniforms;
@@ -368,7 +369,8 @@ void TextureCacheBase::BlurCopy(TCacheEntry* existing_entry)
   uniforms.height = new_config.height;
   // May not be the best radius for blurring. Slower at high IR. Could make it two-pass to be
   // maybe(?) quicker, but don't know how.
-  uniforms.blur_radius = new_config.width / existing_entry->native_width;
+  uniforms.blur_radius = g_ActiveConfig.iEFBExcludeBlurRadius;
+  uniforms.bloom_strength = static_cast<float>(g_ActiveConfig.iEFBExcludeBloomStrength) / 100;
 
   g_vertex_manager->UploadUtilityUniforms(&uniforms, sizeof(uniforms));
 

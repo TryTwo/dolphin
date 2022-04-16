@@ -71,4 +71,6 @@ private:
   GraphicsBool* m_scaled_efb_exclude_blur;
   GraphicsSlider* m_scaled_efb_exclude_slider_width;
   GraphicsInteger* m_scaled_efb_exclude_integer_width;
+  GraphicsSlider* m_scaled_efb_exclude_slider_bloom_strength;
+  GraphicsSlider* m_scaled_efb_exclude_slider_blur_radius;
 };
