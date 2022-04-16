@@ -240,6 +240,8 @@ struct VideoConfig final
 #endif
   bool bEFBBlur = false;
   unsigned int iEFBExcludeWidth = 0;
+  unsigned int iEFBExcludeBloomStrength = 100;
+  unsigned int iEFBExcludeBlurRadius = 4;
   bool bEFBExcludeAlt = false;
   bool bEFBExcludeEnabled = false;
 

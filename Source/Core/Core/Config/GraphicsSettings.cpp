@@ -111,16 +111,17 @@ namespace Config
 	const Info<bool> GFX_CPU_CULL{ {System::GFX, "Settings", "CPUCull"}, false };
 
 	const Info<TriState> GFX_MTL_MANUALLY_UPLOAD_BUFFERS{
-		{System::GFX, "Settings", "ManuallyUploadBuffers"}, TriState::Auto };
+			{System::GFX, "Settings", "ManuallyUploadBuffers"}, TriState::Auto };
 	const Info<TriState> GFX_MTL_USE_PRESENT_DRAWABLE{
 		{System::GFX, "Settings", "MTLUsePresentDrawable"}, TriState::Auto };
 	const Info<bool> GFX_EFB_SCALE_EXCLUDE_BLUR{ {System::GFX, "Settings", "EFBScaledExcludeBlur"},
 												false };
 	const Info<int> GFX_EFB_SCALE_EXCLUDE_WIDTH{ {System::GFX, "Settings", "EFBScaledExcludeWidth"}, 0 };
+	const Info<int> GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH{
+		{System::GFX, "Settings", "EFBScaledExcludeBloomStrength"}, 100 };
+	const Info<int> GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS{
+		{System::GFX, "Settings", "EFBScaledExcludeBlurRadius"}, 4 };
 	const Info<bool> GFX_EFB_SCALE_EXCLUDE_ALT{ {System::GFX, "Settings", "EFBScaledExcludeAlt"}, false };
-
-	const Info<bool> GFX_EFB_SCALE_EXCLUDE_ENABLED{ {System::GFX, "Settings", "EFBScaledExcludeEnabled"},
-												   false };
 
 	const Info<bool> GFX_SW_DUMP_OBJECTS{ {System::GFX, "Settings", "SWDumpObjects"}, false };
 	const Info<bool> GFX_SW_DUMP_TEV_STAGES{ {System::GFX, "Settings", "SWDumpTevStages"}, false };

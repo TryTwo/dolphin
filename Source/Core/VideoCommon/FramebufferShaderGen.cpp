@@ -499,19 +499,22 @@ std::string GenerateTextureBlurShader()
              "  int width;\n"
              "  int height;\n"
              "  int blur_radius;\n"
+             "float bloom_strength;\n"
              "}};\n\n");
 
   EmitSamplerDeclarations(code, 0, 1, false);
   EmitPixelMainDeclaration(code, 1, 0, "float4", "", true);
-  code.Write("  {{\n"
-             "  int layer = int(v_tex0.z);\n"
-             "  int xs = width;\n"
-             "  int ys = height;\n"
-             "  int r = blur_radius;\n"
-             "  int2 pos = int2(frag_coord.xy);\n"
-             "  int x; int y;\n"
-             "  float4 count = float4(0.0,0.0,0.0,0.0);\n"
-             "  float4 col = float4(0.0,0.0,0.0,0.0);\n");
+  code.Write(
+      "  {{\n"
+      "  int layer = int(v_tex0.z);\n"
+      "  int xs = width;\n"
+      "  int ys = height;\n"
+      "  int r = blur_radius;\n"
+      "  int2 pos = int2(frag_coord.xy);\n"
+      "  float4 str = float4(bloom_strength, bloom_strength, bloom_strength, bloom_strength);\n"
+      "  int x; int y;\n"
+      "  float4 count = float4(0.0,0.0,0.0,0.0);\n"
+      "  float4 col = float4(0.0,0.0,0.0,0.0);\n");
   code.Write("  for (x = -r; x <= r; x++)\n "
              "  {{\n "
              "  for (y = -r; y <= r; y++)\n"
@@ -527,7 +530,7 @@ std::string GenerateTextureBlurShader()
     code.Write("  col += texelFetch(samp0, coords, 0);\n");
 
   code.Write("  }}}}}}\n");
-  code.Write("ocol0 = col / count;}}\n");
+  code.Write("ocol0 = col / count * str;}}\n");
   return code.GetBuffer();
 }
 
