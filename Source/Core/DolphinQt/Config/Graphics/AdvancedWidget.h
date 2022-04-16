@@ -23,7 +23,7 @@ class Layer;
 
 class AdvancedWidget final : public QWidget
 {
-  Q_OBJECT
+	Q_OBJECT
 public:
   explicit AdvancedWidget(GraphicsWindow* parent);
   AdvancedWidget(GameConfigWidget* parent, Config::Layer* layer);
@@ -35,21 +35,21 @@ private:
   void OnBackendChanged();
   void OnEmulationStateChanged(bool running);
 
-  // Debugging
-  ConfigBool* m_enable_wireframe;
-  ConfigBool* m_show_statistics;
-  ConfigBool* m_show_proj_statistics;
-  ConfigBool* m_enable_format_overlay;
-  ConfigBool* m_enable_api_validation;
-  ConfigBool* m_show_fps;
-  ConfigBool* m_show_ftimes;
-  ConfigBool* m_show_vps;
-  ConfigBool* m_show_vtimes;
-  ConfigBool* m_show_graphs;
-  ConfigBool* m_show_speed;
-  ConfigBool* m_show_speed_colors;
-  ConfigInteger* m_perf_samp_window;
-  ConfigBool* m_log_render_time;
+	// Debugging
+	ConfigBool* m_enable_wireframe;
+	ConfigBool* m_show_statistics;
+	ConfigBool* m_show_proj_statistics;
+	ConfigBool* m_enable_format_overlay;
+	ConfigBool* m_enable_api_validation;
+	ConfigBool* m_show_fps;
+	ConfigBool* m_show_ftimes;
+	ConfigBool* m_show_vps;
+	ConfigBool* m_show_vtimes;
+	ConfigBool* m_show_graphs;
+	ConfigBool* m_show_speed;
+	ConfigBool* m_show_speed_colors;
+	ConfigInteger* m_perf_samp_window;
+	ConfigBool* m_log_render_time;
 
   // Utility
   ConfigBool* m_prefetch_custom_textures;
@@ -59,10 +59,10 @@ private:
   ConfigBool* m_load_custom_textures;
   ConfigBool* m_enable_graphics_mods;
 
-  // Texture dumping
-  ConfigBool* m_dump_textures;
-  ConfigBool* m_dump_mip_textures;
-  ConfigBool* m_dump_base_textures;
+	// Texture dumping
+	ConfigBool* m_dump_textures;
+	ConfigBool* m_dump_mip_textures;
+	ConfigBool* m_dump_base_textures;
 
   // Frame dumping
   ConfigBool* m_dump_use_lossless;
@@ -78,14 +78,16 @@ private:
   ConfigBool* m_cpu_cull;
   ConfigBool* m_borderless_fullscreen;
 
-  // Experimental
-  ConfigBool* m_defer_efb_access_invalidation;
-  ConfigBool* m_manual_texture_sampling;
+	// Experimental
+	ConfigBool* m_defer_efb_access_invalidation;
+	ConfigBool* m_manual_texture_sampling;
 
-  // EFB exclusions
-  ConfigBool* m_scaled_efb_exclude_enable;
-  ConfigBool* m_scaled_efb_exclude_alt;
-  ConfigBool* m_scaled_efb_exclude_blur;
-  ConfigSlider* m_scaled_efb_exclude_slider_width;
-  ConfigInteger* m_scaled_efb_exclude_integer_width;
+	// EFB exclusions
+	ConfigBool* m_scaled_efb_exclude_enable;
+	ConfigBool* m_scaled_efb_exclude_alt;
+	ConfigBool* m_scaled_efb_exclude_blur;
+	ConfigSlider* m_scaled_efb_exclude_slider_width;
+	ConfigInteger* m_scaled_efb_exclude_integer_width;
+	ConfigSlider* m_scaled_efb_exclude_slider_bloom_strength;
+	ConfigSlider* m_scaled_efb_exclude_slider_blur_radius;
 };

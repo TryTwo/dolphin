@@ -235,17 +235,23 @@ void AdvancedWidget::CreateWidgets()
   auto* efb_layout = new QVBoxLayout();
   auto* efb_layout_width_integer = new QHBoxLayout();
   auto* efb_layout_top = new QHBoxLayout();
+  auto* efb_layout_bottom = new QHBoxLayout();
   efb_box->setLayout(efb_layout);
 
   m_scaled_efb_exclude_enable =
       new ConfigBool(tr("Enabled"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
-  m_scaled_efb_exclude_alt = new ConfigBool(
-      tr("Use alternative method to exclude fewer EFB copies"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
+  m_scaled_efb_exclude_alt = new ConfigBool(tr("Filter Less"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
   m_scaled_efb_exclude_blur = new ConfigBool(tr("Blur Copy"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
   m_scaled_efb_exclude_slider_width =
       new ConfigSlider(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
   m_scaled_efb_exclude_integer_width =
       new ConfigInteger(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
+  m_scaled_efb_exclude_slider_bloom_strength =
+      new ConfigSlider(50, 150, Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH, 100);
+  m_scaled_efb_exclude_slider_blur_radius =
+      new ConfigSlider(1, 10, Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS, 4);
+  auto* bloom_strength_label = new QLabel(tr("Bloom"));
+  auto* blur_radius_label = new QLabel(tr("Blur"));
 
   if (!m_scaled_efb_exclude_enable->isChecked())
   {
@@ -253,7 +259,14 @@ void AdvancedWidget::CreateWidgets()
     m_scaled_efb_exclude_alt->setEnabled(false);
     m_scaled_efb_exclude_blur->setEnabled(false);
     m_scaled_efb_exclude_integer_width->setEnabled(false);
+    m_scaled_efb_exclude_slider_blur_radius->setEnabled(false);
+    m_scaled_efb_exclude_slider_bloom_strength->setEnabled(false);
   }
+
+  m_scaled_efb_exclude_slider_blur_radius->setTickPosition(QSlider::TicksBelow);
+  m_scaled_efb_exclude_slider_blur_radius->setTickInterval(3);
+  m_scaled_efb_exclude_slider_bloom_strength->setTickPosition(QSlider::TicksBelow);
+  m_scaled_efb_exclude_slider_bloom_strength->setTickInterval(50);
 
   QFontMetrics fm(font());
   m_scaled_efb_exclude_integer_width->setFixedWidth(fm.lineSpacing() * 4);
@@ -265,8 +278,13 @@ void AdvancedWidget::CreateWidgets()
   efb_layout_width_integer->addWidget(new QLabel(tr("Width < ")));
   efb_layout_width_integer->addWidget(m_scaled_efb_exclude_integer_width);
   efb_layout_width_integer->addWidget(m_scaled_efb_exclude_slider_width);
+  efb_layout_bottom->addWidget(blur_radius_label);
+  efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_blur_radius);
+  efb_layout_bottom->addWidget(bloom_strength_label);
+  efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_bloom_strength);
   efb_layout->addLayout(efb_layout_top);
   efb_layout->addLayout(efb_layout_width_integer);
+  efb_layout->addLayout(efb_layout_bottom);
 
   // Experimental.
   auto* experimental_box = new QGroupBox(tr("Experimental"));
@@ -307,8 +325,19 @@ void AdvancedWidget::ConnectWidgets()
   connect(m_scaled_efb_exclude_enable, &QCheckBox::toggled, [=](bool checked) {
     m_scaled_efb_exclude_slider_width->setEnabled(checked);
     m_scaled_efb_exclude_alt->setEnabled(checked);
-    m_scaled_efb_exclude_blur->setEnabled(checked);
     m_scaled_efb_exclude_integer_width->setEnabled(checked);
+    if (m_scaled_efb_exclude_blur->isChecked() == true)
+    {
+      m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
+      m_scaled_efb_exclude_slider_blur_radius->setEnabled(checked);
+    }
+
+    m_scaled_efb_exclude_blur->setEnabled(checked);
+  });
+
+  connect(m_scaled_efb_exclude_blur, &QCheckBox::toggled, [=](bool checked) {
+    m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
+    m_scaled_efb_exclude_slider_blur_radius->setEnabled(checked);
   });
 
   // A &QSlider signal won't fire when game ini's trigger a change, due to a signalblock in
@@ -316,6 +345,7 @@ void AdvancedWidget::ConnectWidgets()
   connect(m_scaled_efb_exclude_slider_width, &ConfigSlider::valueChanged, [=] {
     m_scaled_efb_exclude_integer_width->setValue(m_scaled_efb_exclude_slider_width->value());
   });
+
 #if defined(HAVE_FFMPEG)
   connect(m_dump_use_lossless, &QCheckBox::toggled, this,
           [this](bool checked) { m_dump_bitrate->setEnabled(!checked); });
