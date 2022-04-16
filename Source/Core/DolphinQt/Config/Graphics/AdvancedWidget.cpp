@@ -241,7 +241,9 @@ void AdvancedWidget::CreateWidgets()
   m_scaled_efb_exclude_enable =
       new ConfigBool(tr("Enabled"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
   m_scaled_efb_exclude_alt = new ConfigBool(tr("Filter Less"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
-  m_scaled_efb_exclude_blur = new ConfigBool(tr("Blur Copy"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
+  m_scaled_efb_exclude_blur = new ConfigBool(tr("Edit Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
+  m_scaled_efb_exclude_downscale =
+      new ConfigBool(tr("Downscale Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_DOWNSCALE);
   m_scaled_efb_exclude_slider_width =
       new ConfigSlider(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
   m_scaled_efb_exclude_integer_width =
@@ -258,21 +260,23 @@ void AdvancedWidget::CreateWidgets()
     m_scaled_efb_exclude_slider_width->setEnabled(false);
     m_scaled_efb_exclude_alt->setEnabled(false);
     m_scaled_efb_exclude_blur->setEnabled(false);
+    m_scaled_efb_exclude_downscale->setEnabled(false);
     m_scaled_efb_exclude_integer_width->setEnabled(false);
     m_scaled_efb_exclude_slider_blur_radius->setEnabled(false);
     m_scaled_efb_exclude_slider_bloom_strength->setEnabled(false);
   }
 
   m_scaled_efb_exclude_slider_blur_radius->setTickPosition(QSlider::TicksBelow);
-  m_scaled_efb_exclude_slider_blur_radius->setTickInterval(3);
+  // m_scaled_efb_exclude_slider_blur_radius->setTickInterval(1);
   m_scaled_efb_exclude_slider_bloom_strength->setTickPosition(QSlider::TicksBelow);
-  m_scaled_efb_exclude_slider_bloom_strength->setTickInterval(50);
+  // m_scaled_efb_exclude_slider_bloom_strength->setTickInterval(5);
 
   QFontMetrics fm(font());
   m_scaled_efb_exclude_integer_width->setFixedWidth(fm.lineSpacing() * 4);
 
   efb_layout_top->addWidget(m_scaled_efb_exclude_enable);
   efb_layout_top->addStretch();
+  efb_layout_top->addWidget(m_scaled_efb_exclude_downscale);
   efb_layout_top->addWidget(m_scaled_efb_exclude_alt);
   efb_layout_top->addWidget(m_scaled_efb_exclude_blur);
   efb_layout_width_integer->addWidget(new QLabel(tr("Width < ")));
@@ -322,10 +326,11 @@ void AdvancedWidget::ConnectWidgets()
   });
   connect(m_enable_graphics_mods, &QCheckBox::toggled, this,
           [](bool checked) { emit Settings::Instance().EnableGfxModsChanged(checked); });
-  connect(m_scaled_efb_exclude_enable, &QCheckBox::toggled, [=](bool checked) {
+  connect(m_scaled_efb_exclude_enable, &ConfigBool::toggled, [=](bool checked) {
     m_scaled_efb_exclude_slider_width->setEnabled(checked);
     m_scaled_efb_exclude_alt->setEnabled(checked);
     m_scaled_efb_exclude_integer_width->setEnabled(checked);
+    m_scaled_efb_exclude_downscale->setEnabled(checked);
     if (m_scaled_efb_exclude_blur->isChecked() == true)
     {
       m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
@@ -342,9 +347,9 @@ void AdvancedWidget::ConnectWidgets()
 
   // A &QSlider signal won't fire when game ini's trigger a change, due to a signalblock in
   // GraphicsSlider
-  connect(m_scaled_efb_exclude_slider_width, &ConfigSlider::valueChanged, [=] {
-    m_scaled_efb_exclude_integer_width->setValue(m_scaled_efb_exclude_slider_width->value());
-  });
+  //	connect(m_scaled_efb_exclude_slider_width, &ConfigSlider::valueChanged, [=] {
+  //		m_scaled_efb_exclude_integer_width->setValue(m_scaled_efb_exclude_slider_width->value());
+  //		});
 
 #if defined(HAVE_FFMPEG)
   connect(m_dump_use_lossless, &QCheckBox::toggled, this,
