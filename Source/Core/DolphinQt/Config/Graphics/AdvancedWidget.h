@@ -78,12 +78,13 @@ private:
 	ConfigBool* m_defer_efb_access_invalidation;
 	ConfigBool* m_manual_texture_sampling;
 
-	// EFB exclusions
-	ConfigBool* m_scaled_efb_exclude_enable;
-	ConfigBool* m_scaled_efb_exclude_alt;
-	ConfigBool* m_scaled_efb_exclude_blur;
-	ConfigSlider* m_scaled_efb_exclude_slider_width;
-	ConfigInteger* m_scaled_efb_exclude_integer_width;
-	ConfigSlider* m_scaled_efb_exclude_slider_bloom_strength;
-	ConfigSlider* m_scaled_efb_exclude_slider_blur_radius;
+  // EFB exclusions
+  ConfigBool* m_scaled_efb_exclude_enable;
+  ConfigBool* m_scaled_efb_exclude_alt;
+  ConfigBool* m_scaled_efb_exclude_blur;
+  ConfigBool* m_scaled_efb_exclude_downscale;
+  ConfigSlider* m_scaled_efb_exclude_slider_width;
+  ConfigInteger* m_scaled_efb_exclude_integer_width;
+  ConfigSlider* m_scaled_efb_exclude_slider_bloom_strength;
+  ConfigSlider* m_scaled_efb_exclude_slider_blur_radius;
 };

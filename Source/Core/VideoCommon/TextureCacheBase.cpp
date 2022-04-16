@@ -393,10 +393,10 @@ void TextureCacheBase::BlurCopy(TCacheEntry* existing_entry)
   Uniforms uniforms;
   uniforms.width = new_config.width;
   uniforms.height = new_config.height;
-  // May not be the best radius for blurring. Slower at high IR. Could make it two-pass to be
-  // maybe(?) quicker, but don't know how.
+  // A larger blur radius takes more time to compute. Strength is a simple percentage, but scaled by
+  // 1/5th to make slider work better.
   uniforms.blur_radius = g_ActiveConfig.iEFBExcludeBlurRadius;
-  uniforms.bloom_strength = static_cast<float>(g_ActiveConfig.iEFBExcludeBloomStrength) / 100;
+  uniforms.bloom_strength = static_cast<float>(g_ActiveConfig.iEFBExcludeBloomStrength) * 5 / 100;
 
 	g_vertex_manager->UploadUtilityUniforms(&uniforms, sizeof(uniforms));
 
@@ -2317,6 +2317,12 @@ void TextureCacheBase::CopyRenderTargetToTexture(
 		!(is_xfb_copy ? g_ActiveConfig.bSkipXFBCopyToRam : g_ActiveConfig.bSkipEFBCopyToRam) ||
 		!copy_to_vram;
 
+	u8* dst = Memory::GetPointer(dstAddr);
+	if (dst == nullptr)
+	{
+		ERROR_LOG_FMT(VIDEO, "Trying to copy from EFB to invalid address {:#010x}", dstAddr);
+		return;
+	}
 	// tex_w and tex_h are the native size of the texture in the GC memory.
 	// The size scaled_* represents the emulated texture. Those differ
 	// because of upscaling and because of yscaling of XFB copies.
@@ -2325,32 +2331,34 @@ void TextureCacheBase::CopyRenderTargetToTexture(
 	u32 tex_h = height;
 	u32 scaled_tex_w = g_framebuffer_manager->EFBToScaledX(width);
 	u32 scaled_tex_h = g_framebuffer_manager->EFBToScaledY(height);
-	bool EFBSkipUpscale = false;
-	bool EFBBlur = false;
+	bool skip_upscale = false;
+	bool use_blur_shader = false;
+	bool bloom_copy = false;
 
-	if (is_xfb_copy)
-	{
-		EFBSkipUpscale = false;
-	}
-	else if (!g_ActiveConfig.bCopyEFBScaled)
-	{
-		EFBSkipUpscale = true;
-	}
-	else if (g_ActiveConfig.bEFBExcludeEnabled && width <= g_ActiveConfig.iEFBExcludeWidth)
-	{
-		// Could add option for texture formats here. Note: Mario Sunshine's graffiti has a non-standard
-		// texture that benefits from excluding from upscaling.
-		if (!g_ActiveConfig.bEFBExcludeAlt)
-			EFBSkipUpscale = true;
-		else if (m_bloom_dst_check == dst)
-			EFBSkipUpscale = true;
+  if (is_xfb_copy)
+  {
+    m_efb_num = 0;
+    skip_upscale = false;
+  }
+  else if (!g_ActiveConfig.bCopyEFBScaled)
+  {
+    skip_upscale = true;
+  }
+  else if (g_ActiveConfig.bEFBExcludeEnabled && width <= g_ActiveConfig.iEFBExcludeWidth &&
+           m_efb_num > 1)
+  {
+    // Could add option for texture formats here. Note: Mario Sunshine's graffiti has a non-standard
+    // texture that benefits from excluding from upscaling.
+    if (!g_ActiveConfig.bEFBExcludeAlt)
+      bloom_copy = true;
+    else if (m_bloom_dst_check == dst)
+      bloom_copy = true;
+  }
 
-		if (g_ActiveConfig.bEFBBlur && EFBSkipUpscale == true)
-		{
-			EFBSkipUpscale = false;
-			EFBBlur = true;
-		}
-	}
+  if (g_ActiveConfig.bEFBBlur && bloom_copy)
+    use_blur_shader = true;
+  if (g_ActiveConfig.bEFBExcludeDownscale && bloom_copy)
+    skip_upscale = true;
 
 	if (scaleByHalf)
 	{
@@ -2360,14 +2368,15 @@ void TextureCacheBase::CopyRenderTargetToTexture(
 		scaled_tex_h /= 2;
 	}
 
-	if (EFBSkipUpscale)
-	{
-		// No upscaling
-		scaled_tex_w = tex_w;
-		scaled_tex_h = tex_h;
-	}
+  if (skip_upscale)
+  {
+    // No upscaling
+    scaled_tex_w = tex_w;
+    scaled_tex_h = tex_h;
+  }
 
-	m_bloom_dst_check = dst;
+  m_efb_num += 1;
+  m_bloom_dst_check = dst;
 
 	// Get the base (in memory) format of this efb copy.
 	TextureFormat baseFormat = TexDecoder_GetEFBCopyBaseFormat(dstFormat);
@@ -2478,12 +2487,12 @@ void TextureCacheBase::CopyRenderTargetToTexture(
 				isIntensity, gamma, clamp_top, clamp_bottom,
 				GetVRAMCopyFilterCoefficients(filter_coefficients));
 
-			// Bloom fix
-			if (EFBBlur == true &&
-				(baseFormat == TextureFormat::RGB565 || baseFormat == TextureFormat::RGBA8))
-			{
-				BlurCopy(entry);
-			}
+      // Bloom fix
+      if (use_blur_shader &&
+          (baseFormat == TextureFormat::RGB565 || baseFormat == TextureFormat::RGBA8))
+      {
+        BlurCopy(entry);
+      }
 
 			if (is_xfb_copy && (g_ActiveConfig.bDumpXFBTarget || g_ActiveConfig.bGraphicMods))
 			{

@@ -187,61 +187,66 @@ void AdvancedWidget::CreateWidgets()
 	misc_layout->addWidget(m_borderless_fullscreen, 2, 1);
 #endif
 
-  // Scaled EFB Copy Exclusions
-  auto* efb_box = new QGroupBox(tr("Scaled EFB Copy Exclusions"));
-  auto* efb_layout = new QVBoxLayout();
-  auto* efb_layout_width_integer = new QHBoxLayout();
-  auto* efb_layout_top = new QHBoxLayout();
-  auto* efb_layout_bottom = new QHBoxLayout();
-  efb_box->setLayout(efb_layout);
+	// Scaled EFB Copy Exclusions
+	auto* efb_box = new QGroupBox(tr("Scaled EFB Copy Exclusions"));
+	auto* efb_layout = new QVBoxLayout();
+	auto* efb_layout_width_integer = new QHBoxLayout();
+	auto* efb_layout_top = new QHBoxLayout();
+	auto* efb_layout_bottom = new QHBoxLayout();
+	efb_box->setLayout(efb_layout);
 
-  m_scaled_efb_exclude_enable =
-      new ConfigBool(tr("Enabled"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
-  m_scaled_efb_exclude_alt = new ConfigBool(tr("Filter Less"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
-  m_scaled_efb_exclude_blur = new ConfigBool(tr("Blur Copy"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
-  m_scaled_efb_exclude_slider_width =
-      new ConfigSlider(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
-  m_scaled_efb_exclude_integer_width =
-      new ConfigInteger(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
-  m_scaled_efb_exclude_slider_bloom_strength =
-      new ConfigSlider(50, 150, Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH, 100);
-  m_scaled_efb_exclude_slider_blur_radius =
-      new ConfigSlider(1, 10, Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS, 4);
-  auto* bloom_strength_label = new QLabel(tr("Bloom"));
-  auto* blur_radius_label = new QLabel(tr("Blur"));
+	m_scaled_efb_exclude_enable =
+		new ConfigBool(tr("Enabled"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
+	m_scaled_efb_exclude_alt = new ConfigBool(tr("Filter Less"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
+	m_scaled_efb_exclude_blur =
+		new ConfigBool(tr("Edit Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
+	m_scaled_efb_exclude_downscale =
+		new ConfigBool(tr("Downscale Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_DOWNSCALE);
+	m_scaled_efb_exclude_slider_width =
+		new ConfigSlider(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
+	m_scaled_efb_exclude_integer_width =
+		new ConfigInteger(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
+	m_scaled_efb_exclude_slider_bloom_strength =
+		new ConfigSlider(50, 150, Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH, 100);
+	m_scaled_efb_exclude_slider_blur_radius =
+		new ConfigSlider(1, 10, Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS, 4);
+	auto* bloom_strength_label = new QLabel(tr("Bloom"));
+	auto* blur_radius_label = new QLabel(tr("Blur"));
 
-  if (!m_scaled_efb_exclude_enable->isChecked())
-  {
-    m_scaled_efb_exclude_slider_width->setEnabled(false);
-    m_scaled_efb_exclude_alt->setEnabled(false);
-    m_scaled_efb_exclude_blur->setEnabled(false);
-    m_scaled_efb_exclude_integer_width->setEnabled(false);
-    m_scaled_efb_exclude_slider_blur_radius->setEnabled(false);
-    m_scaled_efb_exclude_slider_bloom_strength->setEnabled(false);
-  }
+	if (!m_scaled_efb_exclude_enable->isChecked())
+	{
+		m_scaled_efb_exclude_slider_width->setEnabled(false);
+		m_scaled_efb_exclude_alt->setEnabled(false);
+		m_scaled_efb_exclude_blur->setEnabled(false);
+		m_scaled_efb_exclude_downscale->setEnabled(false);
+		m_scaled_efb_exclude_integer_width->setEnabled(false);
+		m_scaled_efb_exclude_slider_blur_radius->setEnabled(false);
+		m_scaled_efb_exclude_slider_bloom_strength->setEnabled(false);
+	}
 
-  m_scaled_efb_exclude_slider_blur_radius->setTickPosition(QSlider::TicksBelow);
-  m_scaled_efb_exclude_slider_blur_radius->setTickInterval(3);
-  m_scaled_efb_exclude_slider_bloom_strength->setTickPosition(QSlider::TicksBelow);
-  m_scaled_efb_exclude_slider_bloom_strength->setTickInterval(50);
+	m_scaled_efb_exclude_slider_blur_radius->setTickPosition(QSlider::TicksBelow);
+	// m_scaled_efb_exclude_slider_blur_radius->setTickInterval(1);
+	m_scaled_efb_exclude_slider_bloom_strength->setTickPosition(QSlider::TicksBelow);
+	// m_scaled_efb_exclude_slider_bloom_strength->setTickInterval(5);
 
-  QFontMetrics fm(font());
-  m_scaled_efb_exclude_integer_width->setFixedWidth(fm.lineSpacing() * 4);
+	QFontMetrics fm(font());
+	m_scaled_efb_exclude_integer_width->setFixedWidth(fm.lineSpacing() * 4);
 
-  efb_layout_top->addWidget(m_scaled_efb_exclude_enable);
-  efb_layout_top->addStretch();
-  efb_layout_top->addWidget(m_scaled_efb_exclude_alt);
-  efb_layout_top->addWidget(m_scaled_efb_exclude_blur);
-  efb_layout_width_integer->addWidget(new QLabel(tr("Width < ")));
-  efb_layout_width_integer->addWidget(m_scaled_efb_exclude_integer_width);
-  efb_layout_width_integer->addWidget(m_scaled_efb_exclude_slider_width);
-  efb_layout_bottom->addWidget(blur_radius_label);
-  efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_blur_radius);
-  efb_layout_bottom->addWidget(bloom_strength_label);
-  efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_bloom_strength);
-  efb_layout->addLayout(efb_layout_top);
-  efb_layout->addLayout(efb_layout_width_integer);
-  efb_layout->addLayout(efb_layout_bottom);
+	efb_layout_top->addWidget(m_scaled_efb_exclude_enable);
+	efb_layout_top->addStretch();
+	efb_layout_top->addWidget(m_scaled_efb_exclude_downscale);
+	efb_layout_top->addWidget(m_scaled_efb_exclude_alt);
+	efb_layout_top->addWidget(m_scaled_efb_exclude_blur);
+	efb_layout_width_integer->addWidget(new QLabel(tr("Width < ")));
+	efb_layout_width_integer->addWidget(m_scaled_efb_exclude_integer_width);
+	efb_layout_width_integer->addWidget(m_scaled_efb_exclude_slider_width);
+	efb_layout_bottom->addWidget(blur_radius_label);
+	efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_blur_radius);
+	efb_layout_bottom->addWidget(bloom_strength_label);
+	efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_bloom_strength);
+	efb_layout->addLayout(efb_layout_top);
+	efb_layout->addLayout(efb_layout_width_integer);
+	efb_layout->addLayout(efb_layout_bottom);
 
 	// Experimental.
 	auto* experimental_box = new QGroupBox(tr("Experimental"));
@@ -271,32 +276,33 @@ void AdvancedWidget::CreateWidgets()
 
 void AdvancedWidget::ConnectWidgets()
 {
-  connect(m_load_custom_textures, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
-  connect(m_dump_use_ffv1, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
-  connect(m_enable_prog_scan, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
-  connect(m_scaled_efb_exclude_enable, &QCheckBox::toggled, [=](bool checked) {
-    m_scaled_efb_exclude_slider_width->setEnabled(checked);
-    m_scaled_efb_exclude_alt->setEnabled(checked);
-    m_scaled_efb_exclude_integer_width->setEnabled(checked);
-    if (m_scaled_efb_exclude_blur->isChecked() == true)
-    {
-      m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
-      m_scaled_efb_exclude_slider_blur_radius->setEnabled(checked);
-    }
+	connect(m_load_custom_textures, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
+	connect(m_dump_use_ffv1, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
+	connect(m_enable_prog_scan, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
+	connect(m_scaled_efb_exclude_enable, &ConfigBool::toggled, [=](bool checked) {
+		m_scaled_efb_exclude_slider_width->setEnabled(checked);
+		m_scaled_efb_exclude_alt->setEnabled(checked);
+		m_scaled_efb_exclude_integer_width->setEnabled(checked);
+		m_scaled_efb_exclude_downscale->setEnabled(checked);
+		if (m_scaled_efb_exclude_blur->isChecked() == true)
+		{
+			m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
+			m_scaled_efb_exclude_slider_blur_radius->setEnabled(checked);
+		}
 
-    m_scaled_efb_exclude_blur->setEnabled(checked);
-  });
+		m_scaled_efb_exclude_blur->setEnabled(checked);
+		});
 
-  connect(m_scaled_efb_exclude_blur, &QCheckBox::toggled, [=](bool checked) {
-    m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
-    m_scaled_efb_exclude_slider_blur_radius->setEnabled(checked);
-  });
+	connect(m_scaled_efb_exclude_blur, &QCheckBox::toggled, [=](bool checked) {
+		m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
+		m_scaled_efb_exclude_slider_blur_radius->setEnabled(checked);
+		});
 
 	// A &QSlider signal won't fire when game ini's trigger a change, due to a signalblock in
 	// GraphicsSlider
-	connect(m_scaled_efb_exclude_slider_width, &ConfigSlider::valueChanged, [=] {
-		m_scaled_efb_exclude_integer_width->setValue(m_scaled_efb_exclude_slider_width->value());
-		});
+	//	connect(m_scaled_efb_exclude_slider_width, &ConfigSlider::valueChanged, [=] {
+	//		m_scaled_efb_exclude_integer_width->setValue(m_scaled_efb_exclude_slider_width->value());
+	//		});
 
 	connect(m_dump_textures, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
 	connect(m_enable_graphics_mods, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);

@@ -137,6 +137,7 @@ void VideoConfig::Refresh()
   bSSAA = Config::Get(Config::GFX_SSAA);
   iEFBScale = Config::Get(Config::GFX_EFB_SCALE);
   bEFBBlur = Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
+  bEFBExcludeDownscale = Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_DOWNSCALE);
   iEFBExcludeWidth = Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_WIDTH);
   iEFBExcludeBloomStrength = Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH);
   iEFBExcludeBlurRadius = Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS);

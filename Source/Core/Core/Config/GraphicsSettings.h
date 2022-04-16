@@ -180,6 +180,7 @@ extern const Info<int> GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH;
 extern const Info<int> GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS;
 extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_ALT;
 extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_BLUR;
+extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_DOWNSCALE;
 extern const Info<bool> GFX_EFB_SCALE_EXCLUDE_ENABLED;
 
 // Graphics.GameSpecific

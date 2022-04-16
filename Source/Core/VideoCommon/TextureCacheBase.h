@@ -467,6 +467,7 @@ private:
 	VideoCommon::TextureUtils::TextureDumper m_texture_dumper;
 
 	u8* m_bloom_dst_check = nullptr;
+	int m_efb_num = 0;
 };
 
 extern std::unique_ptr<TextureCacheBase> g_texture_cache;
