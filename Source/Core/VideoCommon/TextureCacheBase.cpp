@@ -375,10 +375,10 @@ void TextureCacheBase::BlurCopy(TCacheEntry* existing_entry)
   Uniforms uniforms;
   uniforms.width = new_config.width;
   uniforms.height = new_config.height;
-  // May not be the best radius for blurring. Slower at high IR. Could make it two-pass to be
-  // maybe(?) quicker, but don't know how.
+  // A larger blur radius takes more time to compute. Strength is a simple percentage, but scaled by
+  // 1/5th to make slider work better.
   uniforms.blur_radius = g_ActiveConfig.iEFBExcludeBlurRadius;
-  uniforms.bloom_strength = static_cast<float>(g_ActiveConfig.iEFBExcludeBloomStrength) / 100;
+  uniforms.bloom_strength = static_cast<float>(g_ActiveConfig.iEFBExcludeBloomStrength) * 5 / 100;
 
   g_vertex_manager->UploadUtilityUniforms(&uniforms, sizeof(uniforms));
 
@@ -2176,32 +2176,34 @@ void TextureCacheBase::CopyRenderTargetToTexture(
   u32 tex_h = height;
   u32 scaled_tex_w = g_renderer->EFBToScaledX(width);
   u32 scaled_tex_h = g_renderer->EFBToScaledY(height);
-  bool EFBSkipUpscale = false;
-  bool EFBBlur = false;
+  bool skip_upscale = false;
+  bool use_blur_shader = false;
+  bool bloom_copy = false;
 
   if (is_xfb_copy)
   {
-    EFBSkipUpscale = false;
+    m_efb_num = 0;
+    skip_upscale = false;
   }
   else if (!g_ActiveConfig.bCopyEFBScaled)
   {
-    EFBSkipUpscale = true;
+    skip_upscale = true;
   }
-  else if (g_ActiveConfig.bEFBExcludeEnabled && width <= g_ActiveConfig.iEFBExcludeWidth)
+  else if (g_ActiveConfig.bEFBExcludeEnabled && width <= g_ActiveConfig.iEFBExcludeWidth &&
+           m_efb_num > 1)
   {
     // Could add option for texture formats here. Note: Mario Sunshine's graffiti has a non-standard
     // texture that benefits from excluding from upscaling.
     if (!g_ActiveConfig.bEFBExcludeAlt)
-      EFBSkipUpscale = true;
+      bloom_copy = true;
     else if (m_bloom_dst_check == dst)
-      EFBSkipUpscale = true;
-
-    if (g_ActiveConfig.bEFBBlur && EFBSkipUpscale == true)
-    {
-      EFBSkipUpscale = false;
-      EFBBlur = true;
-    }
+      bloom_copy = true;
   }
+
+  if (g_ActiveConfig.bEFBBlur && bloom_copy)
+    use_blur_shader = true;
+  if (g_ActiveConfig.bEFBExcludeDownscale && bloom_copy)
+    skip_upscale = true;
 
   if (scaleByHalf)
   {
@@ -2211,13 +2213,14 @@ void TextureCacheBase::CopyRenderTargetToTexture(
     scaled_tex_h /= 2;
   }
 
-  if (EFBSkipUpscale)
+  if (skip_upscale)
   {
     // No upscaling
     scaled_tex_w = tex_w;
     scaled_tex_h = tex_h;
   }
 
+  m_efb_num += 1;
   m_bloom_dst_check = dst;
 
   // Get the base (in memory) format of this efb copy.
@@ -2318,7 +2321,7 @@ void TextureCacheBase::CopyRenderTargetToTexture(
                           GetVRAMCopyFilterCoefficients(filter_coefficients));
 
       // Bloom fix
-      if (EFBBlur == true &&
+      if (use_blur_shader &&
           (baseFormat == TextureFormat::RGB565 || baseFormat == TextureFormat::RGBA8))
       {
         BlurCopy(entry);
