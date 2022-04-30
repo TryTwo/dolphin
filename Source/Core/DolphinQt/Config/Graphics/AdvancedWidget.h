@@ -78,9 +78,10 @@ private:
   GraphicsBool* m_manual_texture_sampling;
 
   // EFB exclusions
-  GraphicsBool* m_scaled_efb_exclude_enable;
-  GraphicsBool* m_scaled_efb_exclude_alt;
-  GraphicsBool* m_scaled_efb_exclude_blur;
-  GraphicsSlider* m_scaled_efb_exclude_slider_width;
-  GraphicsInteger* m_scaled_efb_exclude_integer_width;
+  GraphicsBool* m_bloom_fix_enable;
+  GraphicsBool* m_bloom_fix_downscale;
+  GraphicsBool* m_bloom_fix_alt;
+  GraphicsBool* m_bloom_fix_skip;
+  GraphicsSlider* m_bloom_fix_slider_width;
+  GraphicsInteger* m_bloom_fix_integer_width;
 };
