@@ -80,6 +80,7 @@ private:
   // EFB exclusions
   GraphicsBool* m_scaled_efb_exclude_enable;
   GraphicsBool* m_scaled_efb_exclude_alt;
+  GraphicsBool* m_scaled_efb_exclude_blur;
   GraphicsSlider* m_scaled_efb_exclude_slider_width;
   GraphicsInteger* m_scaled_efb_exclude_integer_width;
 };
