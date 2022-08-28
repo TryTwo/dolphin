@@ -610,16 +610,18 @@ void CheckExternalExceptions()
 
 void CheckBreakPoints()
 {
-  if (!PowerPC::breakpoints.IsBreakPointEnable(PC))
+  auto [break_on_hit, log_on_hit] = PowerPC::breakpoints.IsBreakPointAction(PC);
+
+  if (!break_on_hit && !log_on_hit)
     return;
 
-  if (PowerPC::breakpoints.IsBreakPointBreakOnHit(PC))
+  if (break_on_hit)
   {
     CPU::Break();
     if (GDBStub::IsActive())
       GDBStub::TakeControl();
   }
-  if (PowerPC::breakpoints.IsBreakPointLogOnHit(PC))
+  if (log_on_hit)
   {
     NOTICE_LOG_FMT(MEMMAP,
                    "BP {:08x} {}({:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} "

@@ -62,8 +62,7 @@ public:
   bool IsAddressBreakPoint(u32 address) const;
   bool IsBreakPointEnable(u32 adresss) const;
   bool IsTempBreakPoint(u32 address) const;
-  bool IsBreakPointBreakOnHit(u32 address) const;
-  bool IsBreakPointLogOnHit(u32 address) const;
+  std::pair<bool, bool> IsBreakPointAction(u32 address) const;
 
   // Add BreakPoint
   void Add(u32 address, bool temp, bool break_on_hit, bool log_on_hit,

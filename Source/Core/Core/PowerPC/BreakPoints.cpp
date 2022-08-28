@@ -36,17 +36,16 @@ bool BreakPoints::IsTempBreakPoint(u32 address) const
   });
 }
 
-bool BreakPoints::IsBreakPointBreakOnHit(u32 address) const
+std::pair<bool, bool> BreakPoints::IsBreakPointAction(u32 address) const
 {
-  return std::any_of(m_breakpoints.begin(), m_breakpoints.end(), [address](const auto& bp) {
-    return bp.address == address && bp.break_on_hit && EvaluateCondition(bp.condition);
-  });
-}
+  const auto bp =
+      std::find_if(m_breakpoints.begin(), m_breakpoints.end(),
+                   [address](const auto& bp) { return bp.is_enabled && bp.address == address; });
 
-bool BreakPoints::IsBreakPointLogOnHit(u32 address) const
-{
-  return std::any_of(m_breakpoints.begin(), m_breakpoints.end(),
-                     [address](const auto& bp) { return bp.address == address && bp.log_on_hit; });
+  if (bp == m_breakpoints.end() || !EvaluateCondition(bp->condition))
+    return std::make_pair(false, false);
+
+  return std::make_pair(bp->break_on_hit, bp->log_on_hit);
 }
 
 BreakPoints::TBreakPointsStr BreakPoints::GetStrings() const
