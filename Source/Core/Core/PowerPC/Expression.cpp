@@ -4,6 +4,7 @@
 
 #include "Core/PowerPC/Expression.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <optional>
 #include <string>
@@ -15,6 +16,7 @@
 
 #include "Common/BitUtils.h"
 #include "Common/CommonTypes.h"
+#include "Core/Debugger/Debugger_SymbolMap.h"
 #include "Core/PowerPC/MMU.h"
 #include "Core/PowerPC/PowerPC.h"
 
@@ -100,7 +102,36 @@ static double CastFunc(expr_func* f, vec_expr_t* args, void* c)
   return Common::BitCast<T>(static_cast<U>(expr_eval(&vec_nth(args, 0))));
 }
 
-static std::array<expr_func, 21> g_expr_funcs{{
+static double CallstackFunc(expr_func* f, vec_expr_t* args, void* c)
+{
+  if (vec_len(args) != 1)
+    return 0;
+
+  std::vector<Dolphin_Debugger::CallstackEntry> stack;
+  bool success = Dolphin_Debugger::GetCallstack(stack);
+  if (!success)
+    return 0;
+
+  double num = expr_eval(&vec_nth(args, 0));
+  if (!isnan(num))
+  {
+    u32 address = static_cast<u32>(num);
+    return std::any_of(stack.begin(), stack.end(),
+                       [address](const auto& s) { return s.vAddress == address; });
+  }
+
+  std::string string = expr_get_str(&vec_nth(args, 0));
+  if (!string.empty())
+  {
+    return std::any_of(stack.begin(), stack.end(), [string](const auto& s) {
+      return s.Name.find(string) != std::string::npos;
+    });
+  }
+
+  return 0;
+}
+
+static std::array<expr_func, 22> g_expr_funcs{{
     {"read_u8", HostReadFunc<u8>},
     {"read_s8", HostReadFunc<s8, u8>},
     {"read_u16", HostReadFunc<u16>},
@@ -120,6 +151,7 @@ static std::array<expr_func, 21> g_expr_funcs{{
     {"s16", CastFunc<s16, u16>},
     {"u32", CastFunc<u32>},
     {"s32", CastFunc<s32, u32>},
+    {"callstack", CallstackFunc},
     {},
 }};
 

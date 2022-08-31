@@ -99,6 +99,7 @@ extern "C" {
 
     OP_CONST,
     OP_VAR,
+    OP_STRING,
     OP_FUNC,
   };
 
@@ -121,6 +122,9 @@ extern "C" {
       struct {
         vec_expr_t args;
       } op;
+      struct {
+        const char* s;
+      } str;
       struct {
         struct expr_func* f;
         vec_expr_t args;
@@ -301,6 +305,13 @@ extern "C" {
     }
   }
 
+  static std::string expr_get_str(struct expr* e) {
+    if (e->type != OP_STRING)
+      return {};
+
+    return e->param.str.s;
+  }
+
   static double expr_eval(struct expr* e) {
     double n;
     switch (e->type) {
@@ -466,6 +477,17 @@ extern "C" {
         for (; i < len && isdigit(s[i]); i++)
           ;
       }
+      return i;
+    }
+    else if (c == '"') {
+      i++;
+      while (i < len && s[i] != '"')
+        i++;
+
+      if (s[i] != '"' || i <= 1)
+        return -5;
+
+      i++;
       return i;
     }
     else if (isfirstvarchr(c)) {
@@ -824,6 +846,16 @@ extern "C" {
         vec_push(&es, expr_const(num));
         paren_next = EXPR_PAREN_FORBIDDEN;
       }
+      else if (n > 1 && *tok == '"')
+      {
+        std::string string(tok, n - 1);
+        string.erase(0, 1);
+
+        struct expr e = expr_init();
+        e.type = OP_STRING;
+        e.param.str.s = strdup(string.c_str());
+        vec_push(&es, e);
+      }
       else if (expr_op(tok, n, -1) != OP_UNKNOWN) {
         enum expr_type op = expr_op(tok, n, -1);
         struct expr_string o2 = { NULL, 0 };
@@ -934,7 +966,7 @@ extern "C" {
         free(e->param.func.context);
       }
     }
-    else if (e->type != OP_CONST && e->type != OP_VAR) {
+    else if (e->type != OP_CONST && e->type != OP_VAR && e->type != OP_STRING) {
       vec_foreach(&e->param.op.args, arg, i) { expr_destroy_args(&arg); }
       vec_free(&e->param.op.args);
     }
