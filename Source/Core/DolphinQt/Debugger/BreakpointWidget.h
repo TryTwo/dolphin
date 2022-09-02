@@ -22,10 +22,11 @@ public:
 
   void AddBP(u32 addr);
   void AddBP(u32 addr, bool temp, bool break_on_hit, bool log_on_hit, const QString& condition);
-  void AddAddressMBP(u32 addr, bool on_read = true, bool on_write = true, bool do_log = true,
-                     bool do_break = true);
-  void AddRangedMBP(u32 from, u32 to, bool do_read = true, bool do_write = true, bool do_log = true,
-                    bool do_break = true);
+  void AddAddressMBP(u32 addr);
+  void AddAddressMBP(u32 addr, const QString& condition, bool on_read = true, bool on_write = true,
+                     bool do_log = true, bool do_break = true);
+  void AddRangedMBP(u32 from, u32 to, const QString& condition, bool do_read = true,
+                    bool do_write = true, bool do_log = true, bool do_break = true);
   void UpdateButtonsEnabled();
   void Update();
 

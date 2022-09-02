@@ -41,14 +41,11 @@ void NewBreakpointDialog::CreateWidgets()
   type_group->addButton(m_instruction_bp);
   m_instruction_box = new QGroupBox;
   m_instruction_address = new QLineEdit;
-  m_instruction_condition = new QLineEdit;
 
   auto* instruction_layout = new QGridLayout;
   m_instruction_box->setLayout(instruction_layout);
   instruction_layout->addWidget(new QLabel(tr("Address:")), 0, 0);
   instruction_layout->addWidget(m_instruction_address, 0, 1);
-  instruction_layout->addWidget(new QLabel(tr("Condition:")), 1, 0);
-  instruction_layout->addWidget(m_instruction_condition, 1, 1);
 
   // Memory BP
   m_memory_bp = new QRadioButton(tr("Memory Breakpoint"));
@@ -97,9 +94,17 @@ void NewBreakpointDialog::CreateWidgets()
   condition_layout->addWidget(m_memory_on_write);
   condition_layout->addWidget(m_memory_on_read_and_write);
 
+  m_conditional = new QLineEdit;
+
+  QGroupBox* expr_box = new QGroupBox(tr("Conditional Expression"));
+  auto* expr_layout = new QHBoxLayout;
+  expr_box->setLayout(expr_layout);
+  expr_layout->addWidget(m_conditional);
+
   QGroupBox* action_box = new QGroupBox(tr("Action"));
   auto* action_layout = new QHBoxLayout;
   action_box->setLayout(action_layout);
+
   action_layout->addWidget(m_do_log);
   action_layout->addWidget(m_do_break);
   action_layout->addWidget(m_do_log_and_break);
@@ -110,6 +115,7 @@ void NewBreakpointDialog::CreateWidgets()
   layout->addWidget(m_instruction_box);
   layout->addWidget(m_memory_bp);
   layout->addWidget(m_memory_box);
+  layout->addWidget(expr_box);
   layout->addWidget(action_box);
   layout->addWidget(m_buttons);
 
@@ -168,6 +174,14 @@ void NewBreakpointDialog::accept()
 
   bool good;
 
+  const QString condition = m_conditional->text().trimmed();
+
+  if (!condition.isEmpty() && !Expression::TryParse(condition.toUtf8().constData()))
+  {
+    invalid_input(tr("Condition"));
+    return;
+  }
+
   if (instruction)
   {
     u32 address = m_instruction_address->text().toUInt(&good, 16);
@@ -175,14 +189,6 @@ void NewBreakpointDialog::accept()
     if (!good)
     {
       invalid_input(tr("Address"));
-      return;
-    }
-
-    const QString condition = m_instruction_condition->text().trimmed();
-
-    if (!condition.isEmpty() && !Expression::TryParse(condition.toUtf8().constData()))
-    {
-      invalid_input(tr("Condition"));
       return;
     }
 
@@ -207,11 +213,11 @@ void NewBreakpointDialog::accept()
         return;
       }
 
-      m_parent->AddRangedMBP(from, to, on_read, on_write, do_log, do_break);
+      m_parent->AddRangedMBP(from, to, condition, on_read, on_write, do_log, do_break);
     }
     else
     {
-      m_parent->AddAddressMBP(from, on_read, on_write, do_log, do_break);
+      m_parent->AddAddressMBP(from, condition, on_read, on_write, do_log, do_break);
     }
   }
 

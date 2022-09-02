@@ -34,7 +34,6 @@ private:
   QRadioButton* m_instruction_bp;
   QGroupBox* m_instruction_box;
   QLineEdit* m_instruction_address;
-  QLineEdit* m_instruction_condition;
 
   // Memory BPs
   QRadioButton* m_memory_bp;
@@ -53,6 +52,8 @@ private:
   QRadioButton* m_do_log;
   QRadioButton* m_do_break;
   QRadioButton* m_do_log_and_break;
+
+  QLineEdit* m_conditional;
 
   QDialogButtonBox* m_buttons;
   BreakpointWidget* m_parent;
