@@ -164,8 +164,12 @@ void AdvancedWidget::CreateWidgets()
       new GraphicsSlider(0, 25, Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH, 5);
   m_scaled_efb_exclude_slider_blur_radius =
       new GraphicsSlider(0, 10, Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS, 1);
-  auto* bloom_strength_label = new QLabel(tr("Strength"));
-  auto* blur_radius_label = new QLabel(tr("Radius"));
+  auto* bloom_strength_label = new QLabel(tr("Strength:"));
+  auto* blur_radius_label = new QLabel(tr("Radius:"));
+  m_bloom_strength_val_label = new QLabel(tr("100%"));
+  m_bloom_strength_val_label->setFixedWidth(32);
+  m_blur_radius_val_label = new QLabel(tr("1"));
+  m_blur_radius_val_label->setFixedWidth(16);
 
   if (!m_scaled_efb_exclude_enable->isChecked())
   {
@@ -195,8 +199,10 @@ void AdvancedWidget::CreateWidgets()
   efb_layout_width_integer->addWidget(m_scaled_efb_exclude_integer_width);
   efb_layout_width_integer->addWidget(m_scaled_efb_exclude_slider_width);
   efb_layout_bottom->addWidget(blur_radius_label);
+  efb_layout_bottom->addWidget(m_blur_radius_val_label);
   efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_blur_radius);
   efb_layout_bottom->addWidget(bloom_strength_label);
+  efb_layout_bottom->addWidget(m_bloom_strength_val_label);
   efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_bloom_strength);
   efb_layout->addLayout(efb_layout_top);
   efb_layout->addLayout(efb_layout_width_integer);
@@ -245,6 +251,15 @@ void AdvancedWidget::ConnectWidgets()
 
     m_scaled_efb_exclude_blur->setEnabled(checked);
   });
+  connect(m_scaled_efb_exclude_slider_bloom_strength, &GraphicsSlider::valueChanged, this,
+          [=](int value) { m_bloom_strength_val_label->setText(tr("%1%").arg(value * 5)); });
+  connect(m_scaled_efb_exclude_slider_blur_radius, &GraphicsSlider::valueChanged, this,
+          [=](int value) {
+            if (value == 0)
+              m_blur_radius_val_label->setText(tr("off"));
+            else
+              m_blur_radius_val_label->setText(tr("%1").arg(value));
+          });
 
   connect(m_scaled_efb_exclude_blur, &QCheckBox::toggled, [=](bool checked) {
     m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
@@ -269,6 +284,11 @@ void AdvancedWidget::LoadSettings()
   m_enable_prog_scan->setChecked(Config::Get(Config::SYSCONF_PROGRESSIVE_SCAN));
   m_dump_mip_textures->setEnabled(Config::Get(Config::GFX_DUMP_TEXTURES));
   m_dump_base_textures->setEnabled(Config::Get(Config::GFX_DUMP_TEXTURES));
+
+  m_bloom_strength_val_label->setText(
+      (tr("%1%").arg(Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH) * 5)));
+  m_blur_radius_val_label->setText(
+      tr("%1").arg(Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS)));
 
   SignalBlocking(m_enable_graphics_mods)->setChecked(Settings::Instance().GetGraphicModsEnabled());
 }

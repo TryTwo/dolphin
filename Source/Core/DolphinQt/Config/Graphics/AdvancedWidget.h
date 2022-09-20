@@ -75,4 +75,6 @@ private:
   GraphicsInteger* m_scaled_efb_exclude_integer_width;
   GraphicsSlider* m_scaled_efb_exclude_slider_bloom_strength;
   GraphicsSlider* m_scaled_efb_exclude_slider_blur_radius;
+  QLabel* m_bloom_strength_val_label;
+  QLabel* m_blur_radius_val_label;
 };
