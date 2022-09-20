@@ -195,23 +195,28 @@ void AdvancedWidget::CreateWidgets()
 	auto* efb_layout_bottom = new QHBoxLayout();
 	efb_box->setLayout(efb_layout);
 
-	m_scaled_efb_exclude_enable =
-		new ConfigBool(tr("Enabled"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
-	m_scaled_efb_exclude_alt = new ConfigBool(tr("Filter Less"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
-	m_scaled_efb_exclude_blur =
-		new ConfigBool(tr("Edit Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
-	m_scaled_efb_exclude_downscale =
-		new ConfigBool(tr("Downscale Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_DOWNSCALE);
-	m_scaled_efb_exclude_slider_width =
-		new ConfigSlider(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
-	m_scaled_efb_exclude_integer_width =
-		new ConfigInteger(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
-	m_scaled_efb_exclude_slider_bloom_strength =
-		new ConfigSlider(50, 150, Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH, 100);
-	m_scaled_efb_exclude_slider_blur_radius =
-		new ConfigSlider(1, 10, Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS, 4);
-	auto* bloom_strength_label = new QLabel(tr("Bloom"));
-	auto* blur_radius_label = new QLabel(tr("Blur"));
+  m_scaled_efb_exclude_enable =
+      new ConfigBool(tr("Enabled"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
+  m_scaled_efb_exclude_alt = new ConfigBool(tr("Filter Less"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
+  m_scaled_efb_exclude_blur =
+      new ConfigBool(tr("Edit Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
+  m_scaled_efb_exclude_downscale =
+      new ConfigBool(tr("Downscale Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_DOWNSCALE);
+  m_scaled_efb_exclude_slider_width =
+      new ConfigSlider(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
+  m_scaled_efb_exclude_integer_width =
+      new ConfigInteger(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
+  // Multipled by 5 for percentage
+  m_scaled_efb_exclude_slider_bloom_strength =
+      new ConfigSlider(0, 25, Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH, 5);
+  m_scaled_efb_exclude_slider_blur_radius =
+      new ConfigSlider(0, 10, Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS, 1);
+  auto* bloom_strength_label = new QLabel(tr("Strength:"));
+  auto* blur_radius_label = new QLabel(tr("Radius:"));
+  m_bloom_strength_val_label = new QLabel(tr("100%"));
+  m_bloom_strength_val_label->setFixedWidth(32);
+  m_blur_radius_val_label = new QLabel(tr("1"));
+  m_blur_radius_val_label->setFixedWidth(16);
 
 	if (!m_scaled_efb_exclude_enable->isChecked())
 	{
@@ -232,21 +237,23 @@ void AdvancedWidget::CreateWidgets()
 	QFontMetrics fm(font());
 	m_scaled_efb_exclude_integer_width->setFixedWidth(fm.lineSpacing() * 4);
 
-	efb_layout_top->addWidget(m_scaled_efb_exclude_enable);
-	efb_layout_top->addStretch();
-	efb_layout_top->addWidget(m_scaled_efb_exclude_downscale);
-	efb_layout_top->addWidget(m_scaled_efb_exclude_alt);
-	efb_layout_top->addWidget(m_scaled_efb_exclude_blur);
-	efb_layout_width_integer->addWidget(new QLabel(tr("Width < ")));
-	efb_layout_width_integer->addWidget(m_scaled_efb_exclude_integer_width);
-	efb_layout_width_integer->addWidget(m_scaled_efb_exclude_slider_width);
-	efb_layout_bottom->addWidget(blur_radius_label);
-	efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_blur_radius);
-	efb_layout_bottom->addWidget(bloom_strength_label);
-	efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_bloom_strength);
-	efb_layout->addLayout(efb_layout_top);
-	efb_layout->addLayout(efb_layout_width_integer);
-	efb_layout->addLayout(efb_layout_bottom);
+  efb_layout_top->addWidget(m_scaled_efb_exclude_enable);
+  efb_layout_top->addStretch();
+  efb_layout_top->addWidget(m_scaled_efb_exclude_downscale);
+  efb_layout_top->addWidget(m_scaled_efb_exclude_alt);
+  efb_layout_top->addWidget(m_scaled_efb_exclude_blur);
+  efb_layout_width_integer->addWidget(new QLabel(tr("Width < ")));
+  efb_layout_width_integer->addWidget(m_scaled_efb_exclude_integer_width);
+  efb_layout_width_integer->addWidget(m_scaled_efb_exclude_slider_width);
+  efb_layout_bottom->addWidget(blur_radius_label);
+  efb_layout_bottom->addWidget(m_blur_radius_val_label);
+  efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_blur_radius);
+  efb_layout_bottom->addWidget(bloom_strength_label);
+  efb_layout_bottom->addWidget(m_bloom_strength_val_label);
+  efb_layout_bottom->addWidget(m_scaled_efb_exclude_slider_bloom_strength);
+  efb_layout->addLayout(efb_layout_top);
+  efb_layout->addLayout(efb_layout_width_integer);
+  efb_layout->addLayout(efb_layout_bottom);
 
 	// Experimental.
 	auto* experimental_box = new QGroupBox(tr("Experimental"));
@@ -290,8 +297,17 @@ void AdvancedWidget::ConnectWidgets()
 			m_scaled_efb_exclude_slider_blur_radius->setEnabled(checked);
 		}
 
-		m_scaled_efb_exclude_blur->setEnabled(checked);
-		});
+    m_scaled_efb_exclude_blur->setEnabled(checked);
+  });
+  connect(m_scaled_efb_exclude_slider_bloom_strength, &ConfigSlider::valueChanged, this,
+          [=](int value) { m_bloom_strength_val_label->setText(tr("%1%").arg(value * 5)); });
+  connect(m_scaled_efb_exclude_slider_blur_radius, &ConfigSlider::valueChanged, this,
+          [=](int value) {
+            if (value == 0)
+              m_blur_radius_val_label->setText(tr("off"));
+            else
+              m_blur_radius_val_label->setText(tr("%1").arg(value));
+          });
 
 	connect(m_scaled_efb_exclude_blur, &QCheckBox::toggled, [=](bool checked) {
 		m_scaled_efb_exclude_slider_bloom_strength->setEnabled(checked);
@@ -317,7 +333,12 @@ void AdvancedWidget::LoadSettings()
 	m_dump_mip_textures->setEnabled(Config::Get(Config::GFX_DUMP_TEXTURES));
 	m_dump_base_textures->setEnabled(Config::Get(Config::GFX_DUMP_TEXTURES));
 
-	SignalBlocking(m_enable_graphics_mods)->setChecked(Settings::Instance().GetGraphicModsEnabled());
+  m_bloom_strength_val_label->setText(
+      (tr("%1%").arg(Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH) * 5)));
+  m_blur_radius_val_label->setText(
+      tr("%1").arg(Config::Get(Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS)));
+
+  SignalBlocking(m_enable_graphics_mods)->setChecked(Settings::Instance().GetGraphicModsEnabled());
 }
 
 void AdvancedWidget::SaveSettings()
