@@ -522,14 +522,9 @@ std::string GenerateTextureBlurShader()
              "  if (pos.x + x <= xs && pos.y + y <= ys)\n"
              "  {{\n"
              "  count += float4(1.0,1.0,1.0,1.0);\n"
-             "  int3 coords = int3(int2(pos.x + x, pos.y + y), layer);\n");
-
-  if (GetAPIType() == APIType::D3D)
-    code.Write("  col += tex0.Load(int4(coords, 0));\n");
-  else
-    code.Write("  col += texelFetch(samp0, coords, 0);\n");
-
-  code.Write("  }}}}}}\n");
+             "  int3 coords = int3(int2(pos.x + x, pos.y + y), layer);\n"
+             "  col += texelFetch(samp0, coords, 0);\n"
+             "  }}}}}}\n");
   code.Write("ocol0 = col / count * str;}}\n");
   return code.GetBuffer();
 }
