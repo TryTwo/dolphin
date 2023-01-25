@@ -1553,7 +1553,7 @@ const AbstractPipeline* ShaderCache::GetTextureBlurPipeline()
   if (shader_source.empty())
     return nullptr;
 
-  std::unique_ptr<AbstractShader> shader = g_renderer->CreateShaderFromSource(
+  std::unique_ptr<AbstractShader> shader = g_gfx->CreateShaderFromSource(
       ShaderStage::Pixel, shader_source, fmt::format("Texture blurring pixel shader"));
 
   if (!shader)
@@ -1569,7 +1569,7 @@ const AbstractPipeline* ShaderCache::GetTextureBlurPipeline()
   config.blending_state = RenderState::GetNoBlendingBlendState();
   config.framebuffer_state = RenderState::GetRGBA8FramebufferState();
   config.usage = AbstractPipelineUsage::Utility;
-  m_blur_pipeline = g_renderer->CreatePipeline(config);
+  m_blur_pipeline = g_gfx->CreatePipeline(config);
   return m_blur_pipeline.get();
 }
 
