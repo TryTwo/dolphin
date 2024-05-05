@@ -241,8 +241,7 @@ void AdvancedWidget::CreateWidgets()
   m_scaled_efb_exclude_enable =
       new ConfigBool(tr("Enabled"), Config::GFX_EFB_SCALE_EXCLUDE_ENABLED);
   m_scaled_efb_exclude_alt = new ConfigBool(tr("Filter Less"), Config::GFX_EFB_SCALE_EXCLUDE_ALT);
-  m_scaled_efb_exclude_blur =
-      new ConfigBool(tr("Edit Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
+  m_scaled_efb_exclude_blur = new ConfigBool(tr("Edit Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_BLUR);
   m_scaled_efb_exclude_downscale =
       new ConfigBool(tr("Downscale Bloom"), Config::GFX_EFB_SCALE_EXCLUDE_DOWNSCALE);
   m_scaled_efb_exclude_slider_width =
@@ -251,7 +250,7 @@ void AdvancedWidget::CreateWidgets()
       new ConfigInteger(0, EFB_WIDTH, Config::GFX_EFB_SCALE_EXCLUDE_WIDTH, 1);
   // Multipled by 5 for percentage
   m_scaled_efb_exclude_slider_bloom_strength =
-      new ConfigSlider(0, 25, Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH, 5);
+      new ConfigSlider(0, 25, Config::GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH, 20);
   m_scaled_efb_exclude_slider_blur_radius =
       new ConfigSlider(0, 10, Config::GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS, 1);
   auto* bloom_strength_label = new QLabel(tr("Strength:"));

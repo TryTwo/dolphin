@@ -10,14 +10,14 @@
 
 namespace Config
 {
-	// Configuration Information
+// Configuration Information
 
-	// Graphics.Hardware
+// Graphics.Hardware
 
-	const Info<bool> GFX_VSYNC{ {System::GFX, "Hardware", "VSync"}, false };
-	const Info<int> GFX_ADAPTER{ {System::GFX, "Hardware", "Adapter"}, 0 };
+const Info<bool> GFX_VSYNC{{System::GFX, "Hardware", "VSync"}, false};
+const Info<int> GFX_ADAPTER{{System::GFX, "Hardware", "Adapter"}, 0};
 
-	// Graphics.Settings
+// Graphics.Settings
 
 const Info<bool> GFX_WIDESCREEN_HACK{{System::GFX, "Settings", "wideScreenHack"}, false};
 const Info<AspectMode> GFX_ASPECT_RATIO{{System::GFX, "Settings", "AspectRatio"}, AspectMode::Auto};
@@ -93,50 +93,53 @@ const Info<bool> GFX_BORDERLESS_FULLSCREEN{{System::GFX, "Settings", "Borderless
 const Info<bool> GFX_ENABLE_VALIDATION_LAYER{{System::GFX, "Settings", "EnableValidationLayer"},
                                              false};
 
-	const Info<bool> GFX_BACKEND_MULTITHREADING{ {System::GFX, "Settings", "BackendMultithreading"},
-												true };
-	const Info<int> GFX_COMMAND_BUFFER_EXECUTE_INTERVAL{
-		{System::GFX, "Settings", "CommandBufferExecuteInterval"}, 100 };
+const Info<bool> GFX_BACKEND_MULTITHREADING{{System::GFX, "Settings", "BackendMultithreading"},
+                                            true};
+const Info<int> GFX_COMMAND_BUFFER_EXECUTE_INTERVAL{
+    {System::GFX, "Settings", "CommandBufferExecuteInterval"}, 100};
 
-	const Info<bool> GFX_SHADER_CACHE{ {System::GFX, "Settings", "ShaderCache"}, true };
-	const Info<bool> GFX_WAIT_FOR_SHADERS_BEFORE_STARTING{
-		{System::GFX, "Settings", "WaitForShadersBeforeStarting"}, false };
-	const Info<ShaderCompilationMode> GFX_SHADER_COMPILATION_MODE{
-		{System::GFX, "Settings", "ShaderCompilationMode"}, ShaderCompilationMode::Synchronous };
-	const Info<int> GFX_SHADER_COMPILER_THREADS{ {System::GFX, "Settings", "ShaderCompilerThreads"}, 1 };
-	const Info<int> GFX_SHADER_PRECOMPILER_THREADS{
-		{System::GFX, "Settings", "ShaderPrecompilerThreads"}, -1 };
-	const Info<bool> GFX_SAVE_TEXTURE_CACHE_TO_STATE{
-		{System::GFX, "Settings", "SaveTextureCacheToState"}, true };
-	const Info<bool> GFX_PREFER_VS_FOR_LINE_POINT_EXPANSION{
-		{System::GFX, "Settings", "PreferVSForLinePointExpansion"}, false };
-	const Info<bool> GFX_CPU_CULL{ {System::GFX, "Settings", "CPUCull"}, false };
+const Info<bool> GFX_SHADER_CACHE{{System::GFX, "Settings", "ShaderCache"}, true};
+const Info<bool> GFX_WAIT_FOR_SHADERS_BEFORE_STARTING{
+    {System::GFX, "Settings", "WaitForShadersBeforeStarting"}, false};
+const Info<ShaderCompilationMode> GFX_SHADER_COMPILATION_MODE{
+    {System::GFX, "Settings", "ShaderCompilationMode"}, ShaderCompilationMode::Synchronous};
+const Info<int> GFX_SHADER_COMPILER_THREADS{{System::GFX, "Settings", "ShaderCompilerThreads"}, 1};
+const Info<int> GFX_SHADER_PRECOMPILER_THREADS{
+    {System::GFX, "Settings", "ShaderPrecompilerThreads"}, -1};
+const Info<bool> GFX_SAVE_TEXTURE_CACHE_TO_STATE{
+    {System::GFX, "Settings", "SaveTextureCacheToState"}, true};
+const Info<bool> GFX_PREFER_VS_FOR_LINE_POINT_EXPANSION{
+    {System::GFX, "Settings", "PreferVSForLinePointExpansion"}, false};
+const Info<bool> GFX_CPU_CULL{{System::GFX, "Settings", "CPUCull"}, false};
 
-	const Info<TriState> GFX_MTL_MANUALLY_UPLOAD_BUFFERS{
-			{System::GFX, "Settings", "ManuallyUploadBuffers"}, TriState::Auto };
-	const Info<TriState> GFX_MTL_USE_PRESENT_DRAWABLE{
-			{System::GFX, "Settings", "MTLUsePresentDrawable"}, TriState::Auto };
-	const Info<bool> GFX_EFB_SCALE_EXCLUDE_BLUR{ {System::GFX, "Settings", "EFBScaledExcludeBlur"},
-											false };
-	const Info<bool> GFX_EFB_SCALE_EXCLUDE_DOWNSCALE{
-			{System::GFX, "Settings", "EFBScaledExcludeDownscale"}, false };
-	const Info<int> GFX_EFB_SCALE_EXCLUDE_WIDTH{ {System::GFX, "Settings", "EFBScaledExclude"}, 0 };
-	const Info<int> GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH{
-			{System::GFX, "Settings", "EFBScaledExcludeBloomStrength"}, 20 };
-	const Info<int> GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS{
-		{System::GFX, "Settings", "EFBScaledExcludeBlurRadius"}, 4 };
-	const Info<bool> GFX_EFB_SCALE_EXCLUDE_ALT{ {System::GFX, "Settings", "EFBScaledExcludeAlt"}, false };
+const Info<TriState> GFX_MTL_MANUALLY_UPLOAD_BUFFERS{
+    {System::GFX, "Settings", "ManuallyUploadBuffers"}, TriState::Auto};
+const Info<TriState> GFX_MTL_USE_PRESENT_DRAWABLE{
+    {System::GFX, "Settings", "MTLUsePresentDrawable"}, TriState::Auto};
 
-	const Info<bool> GFX_SW_DUMP_OBJECTS{ {System::GFX, "Settings", "SWDumpObjects"}, false };
-	const Info<bool> GFX_SW_DUMP_TEV_STAGES{ {System::GFX, "Settings", "SWDumpTevStages"}, false };
-	const Info<bool> GFX_SW_DUMP_TEV_TEX_FETCHES{ {System::GFX, "Settings", "SWDumpTevTexFetches"},
-												 false };
+const Info<bool> GFX_EFB_SCALE_EXCLUDE_ENABLED{{System::GFX, "Settings", "EFBScaledExcludeEnabled"},
+                                               false};
+const Info<bool> GFX_EFB_SCALE_EXCLUDE_BLUR{{System::GFX, "Settings", "EFBScaledExcludeBlur"},
+                                            false};
+const Info<bool> GFX_EFB_SCALE_EXCLUDE_DOWNSCALE{
+    {System::GFX, "Settings", "EFBScaledExcludeDownscale"}, false};
+const Info<int> GFX_EFB_SCALE_EXCLUDE_WIDTH{{System::GFX, "Settings", "EFBScaledExclude"}, 0};
+const Info<int> GFX_EFB_SCALE_EXCLUDE_BLOOM_STRENGTH{
+    {System::GFX, "Settings", "EFBScaledExcludeBloomStrength"}, 20};
+const Info<int> GFX_EFB_SCALE_EXCLUDE_BLUR_RADIUS{
+    {System::GFX, "Settings", "EFBScaledExcludeBlurRadius"}, 4};
+const Info<bool> GFX_EFB_SCALE_EXCLUDE_ALT{{System::GFX, "Settings", "EFBScaledExcludeAlt"}, false};
 
-	const Info<bool> GFX_PREFER_GLES{ {System::GFX, "Settings", "PreferGLES"}, false };
+const Info<bool> GFX_SW_DUMP_OBJECTS{{System::GFX, "Settings", "SWDumpObjects"}, false};
+const Info<bool> GFX_SW_DUMP_TEV_STAGES{{System::GFX, "Settings", "SWDumpTevStages"}, false};
+const Info<bool> GFX_SW_DUMP_TEV_TEX_FETCHES{{System::GFX, "Settings", "SWDumpTevTexFetches"},
+                                             false};
 
-	const Info<bool> GFX_MODS_ENABLE{ {System::GFX, "Settings", "EnableMods"}, false };
+const Info<bool> GFX_PREFER_GLES{{System::GFX, "Settings", "PreferGLES"}, false};
 
-	const Info<std::string> GFX_DRIVER_LIB_NAME{ {System::GFX, "Settings", "DriverLibName"}, "" };
+const Info<bool> GFX_MODS_ENABLE{{System::GFX, "Settings", "EnableMods"}, false};
+
+const Info<std::string> GFX_DRIVER_LIB_NAME{{System::GFX, "Settings", "DriverLibName"}, ""};
 
 const Info<VertexLoaderType> GFX_VERTEX_LOADER_TYPE{{System::GFX, "Settings", "VertexLoaderType"},
                                                     VertexLoaderType::Native};
@@ -161,22 +164,22 @@ const Info<float> GFX_ENHANCE_ARBITRARY_MIPMAP_DETECTION_THRESHOLD{
     {System::GFX, "Enhancements", "ArbitraryMipmapDetectionThreshold"}, 14.0f};
 const Info<bool> GFX_ENHANCE_HDR_OUTPUT{{System::GFX, "Enhancements", "HDROutput"}, false};
 
-	// Color.Correction
+// Color.Correction
 
-	const Info<bool> GFX_CC_CORRECT_COLOR_SPACE{ {System::GFX, "ColorCorrection", "CorrectColorSpace"},
-												false };
-	const Info<ColorCorrectionRegion> GFX_CC_GAME_COLOR_SPACE{
-		{System::GFX, "ColorCorrection", "GameColorSpace"}, ColorCorrectionRegion::SMPTE_NTSCM };
-	const Info<bool> GFX_CC_CORRECT_GAMMA{ {System::GFX, "ColorCorrection", "CorrectGamma"}, false };
-	const Info<float> GFX_CC_GAME_GAMMA{ {System::GFX, "ColorCorrection", "GameGamma"}, 2.35f };
-	const Info<bool> GFX_CC_SDR_DISPLAY_GAMMA_SRGB{
-		{System::GFX, "ColorCorrection", "SDRDisplayGammaSRGB"}, true };
-	const Info<float> GFX_CC_SDR_DISPLAY_CUSTOM_GAMMA{
-		{System::GFX, "ColorCorrection", "SDRDisplayCustomGamma"}, 2.2f };
-	const Info<float> GFX_CC_HDR_PAPER_WHITE_NITS{ {System::GFX, "ColorCorrection", "HDRPaperWhiteNits"},
-												  203.f };
+const Info<bool> GFX_CC_CORRECT_COLOR_SPACE{{System::GFX, "ColorCorrection", "CorrectColorSpace"},
+                                            false};
+const Info<ColorCorrectionRegion> GFX_CC_GAME_COLOR_SPACE{
+    {System::GFX, "ColorCorrection", "GameColorSpace"}, ColorCorrectionRegion::SMPTE_NTSCM};
+const Info<bool> GFX_CC_CORRECT_GAMMA{{System::GFX, "ColorCorrection", "CorrectGamma"}, false};
+const Info<float> GFX_CC_GAME_GAMMA{{System::GFX, "ColorCorrection", "GameGamma"}, 2.35f};
+const Info<bool> GFX_CC_SDR_DISPLAY_GAMMA_SRGB{
+    {System::GFX, "ColorCorrection", "SDRDisplayGammaSRGB"}, true};
+const Info<float> GFX_CC_SDR_DISPLAY_CUSTOM_GAMMA{
+    {System::GFX, "ColorCorrection", "SDRDisplayCustomGamma"}, 2.2f};
+const Info<float> GFX_CC_HDR_PAPER_WHITE_NITS{{System::GFX, "ColorCorrection", "HDRPaperWhiteNits"},
+                                              203.f};
 
-	// Graphics.Stereoscopy
+// Graphics.Stereoscopy
 
 const Info<StereoMode> GFX_STEREO_MODE{{System::GFX, "Stereoscopy", "StereoMode"}, StereoMode::Off};
 const Info<bool> GFX_STEREO_PER_EYE_RESOLUTION_FULL{
@@ -191,7 +194,7 @@ const Info<bool> GFX_STEREO_EFB_MONO_DEPTH{{System::GFX, "Stereoscopy", "StereoE
 const Info<int> GFX_STEREO_DEPTH_PERCENTAGE{{System::GFX, "Stereoscopy", "StereoDepthPercentage"},
                                             100};
 
-	// Graphics.Hacks
+// Graphics.Hacks
 
 const Info<bool> GFX_HACK_EFB_ACCESS_ENABLE{{System::GFX, "Hacks", "EFBAccessEnable"}, false};
 const Info<bool> GFX_HACK_EFB_DEFER_INVALIDATION{
@@ -216,11 +219,11 @@ const Info<u32> GFX_HACK_MISSING_COLOR_VALUE{{System::GFX, "Hacks", "MissingColo
 const Info<bool> GFX_HACK_FAST_TEXTURE_SAMPLING{{System::GFX, "Hacks", "FastTextureSampling"},
                                                 true};
 #ifdef __APPLE__
-	const Info<bool> GFX_HACK_NO_MIPMAPPING{ {System::GFX, "Hacks", "NoMipmapping"}, false };
+const Info<bool> GFX_HACK_NO_MIPMAPPING{{System::GFX, "Hacks", "NoMipmapping"}, false};
 #endif
 
-	// Graphics.GameSpecific
+// Graphics.GameSpecific
 
-	const Info<bool> GFX_PERF_QUERIES_ENABLE{ {System::GFX, "GameSpecific", "PerfQueriesEnable"}, false };
+const Info<bool> GFX_PERF_QUERIES_ENABLE{{System::GFX, "GameSpecific", "PerfQueriesEnable"}, false};
 
 }  // namespace Config
