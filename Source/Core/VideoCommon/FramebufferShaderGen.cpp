@@ -499,7 +499,7 @@ std::string GenerateTextureBlurShader()
              "  int width;\n"
              "  int height;\n"
              "  int blur_radius;\n"
-             "float bloom_strength;\n"
+             "  float bloom_strength;\n"
              "}};\n\n");
 
   EmitSamplerDeclarations(code, 0, 1, false);
@@ -519,10 +519,11 @@ std::string GenerateTextureBlurShader()
              "  {{\n "
              "  for (y = -r; y <= r; y++)\n"
              "  {{\n"
-             "  if (pos.x + x <= xs && pos.y + y <= ys)\n"
+             "  int posx = pos.x + x; int posy = pos.y + y;"
+             "  if (posx + x <= xs && posx + x >= 0 && pos.y + y <= ys && posy + y >= 0)\n"
              "  {{\n"
              "  count += float4(1.0,1.0,1.0,1.0);\n"
-             "  int3 coords = int3(int2(pos.x + x, pos.y + y), layer);\n"
+             "  int3 coords = int3(int2(posx, posy), layer);\n"
              "  col += texelFetch(samp0, coords, 0);\n"
              "  }}}}}}\n");
   code.Write("ocol0 = col / count * str;}}\n");
