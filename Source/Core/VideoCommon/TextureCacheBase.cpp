@@ -398,10 +398,6 @@ void TextureCacheBase::BlurCopy(RcTcacheEntry& existing_entry)
   g_gfx->EndUtilityDrawing();
 
   blur_entry->texture->FinishedRendering();
-
-  if (!blur_entry)
-    return;
-
   uniforms.pass = 1;
   g_vertex_manager->UploadUtilityUniforms(&uniforms, sizeof(uniforms));
 
@@ -413,15 +409,7 @@ void TextureCacheBase::BlurCopy(RcTcacheEntry& existing_entry)
   g_gfx->Draw(0, 3);
   g_gfx->EndUtilityDrawing();
 
-  if (blur_entry)
-  {
-    existing_entry->texture->FinishedRendering();
-    // auto config = blur_entry->texture->GetConfig();
-
-    // m_texture_pool.emplace(
-    //     config, TexPoolEntry(std::move(blur_entry->texture),
-    //     std::move(blur_entry->framebuffer)));
-  }
+  existing_entry->texture->FinishedRendering();
 }
 
 RcTcacheEntry TextureCacheBase::ReinterpretEntry(const RcTcacheEntry& existing_entry,
