@@ -384,6 +384,7 @@ void TextureCacheBase::BlurCopy(RcTcacheEntry& existing_entry)
 
   struct Uniforms
   {
+    u32 pass;
     u32 width;
     u32 height;
     u32 blur_radius;
@@ -391,6 +392,7 @@ void TextureCacheBase::BlurCopy(RcTcacheEntry& existing_entry)
   };
 
   Uniforms uniforms;
+  uniforms.pass = 0;
   uniforms.width = new_config.width;
   uniforms.height = new_config.height;
   // A larger blur radius takes more time to compute. Strength is a simple percentage, but scaled by
@@ -410,16 +412,28 @@ void TextureCacheBase::BlurCopy(RcTcacheEntry& existing_entry)
 
   blur_entry->texture->FinishedRendering();
 
+  if (!blur_entry)
+    return;
+
+  uniforms.pass = 1;
+  g_vertex_manager->UploadUtilityUniforms(&uniforms, sizeof(uniforms));
+
+  g_gfx->SetAndDiscardFramebuffer(existing_entry->framebuffer.get());
+  g_gfx->SetViewportAndScissor(existing_entry->texture->GetRect());
+  g_gfx->SetPipeline(pipeline);
+  g_gfx->SetTexture(0, blur_entry->texture.get());
+  g_gfx->SetSamplerState(1, RenderState::GetPointSamplerState());
+  g_gfx->Draw(0, 3);
+  g_gfx->EndUtilityDrawing();
+
   if (blur_entry)
   {
-    existing_entry->texture.swap(blur_entry->texture);
-    existing_entry->framebuffer.swap(blur_entry->framebuffer);
-
     existing_entry->texture->FinishedRendering();
-    auto config = blur_entry->texture->GetConfig();
+    // auto config = blur_entry->texture->GetConfig();
 
-    m_texture_pool.emplace(
-        config, TexPoolEntry(std::move(blur_entry->texture), std::move(blur_entry->framebuffer)));
+    // m_texture_pool.emplace(
+    //     config, TexPoolEntry(std::move(blur_entry->texture),
+    //     std::move(blur_entry->framebuffer)));
   }
 }
 
