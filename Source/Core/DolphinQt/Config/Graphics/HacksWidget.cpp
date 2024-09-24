@@ -30,12 +30,7 @@ HacksWidget::HacksWidget(GraphicsWindow* parent)
   AddDescriptions();
 
   connect(parent, &GraphicsWindow::BackendChanged, this, &HacksWidget::OnBackendChanged);
-  OnBackendChanged(QString::fromStdString(Config::Get(Config::MAIN_GFX_BACKEND)));
   connect(&Settings::Instance(), &Settings::ConfigChanged, this, &HacksWidget::LoadSettings);
-  connect(m_gpu_texture_decoding, &QCheckBox::toggled, [this, parent] {
-    SaveSettings();
-    emit parent->UseGPUTextureDecodingChanged();
-  });
 }
 
 HacksWidget::HacksWidget(GameConfigWidget* parent, Config::Layer* layer) : m_game_layer(layer)
@@ -141,7 +136,7 @@ void HacksWidget::CreateWidgets()
   UpdateSkipPresentingDuplicateFramesEnabled();
 }
 
-void HacksWidget::OnBackendChanged(const QString& backend_name)
+void HacksWidget::OnBackendChanged()
 {
   const bool bbox = g_Config.backend_info.bSupportsBBox;
   const bool gpu_texture_decoding = g_Config.backend_info.bSupportsGPUTextureDecoding;
@@ -150,7 +145,7 @@ void HacksWidget::OnBackendChanged(const QString& backend_name)
   m_disable_bounding_box->setEnabled(bbox);
 
   const QString tooltip = tr("%1 doesn't support this feature on your system.")
-                              .arg(tr(backend_name.toStdString().c_str()));
+                              .arg(tr(Config::Get(Config::MAIN_GFX_BACKEND).c_str()));
 
   m_gpu_texture_decoding->setToolTip(!gpu_texture_decoding ? tooltip : QString{});
   m_disable_bounding_box->setToolTip(!bbox ? tooltip : QString{});

@@ -70,3 +70,44 @@ void ConfigStringChoice::OnConfigChanged()
 {
   Load();
 }
+
+BaseConfigComplexChoice::BaseConfigComplexChoice(Config::Layer* layer) : m_layer(layer)
+{
+  connect(&Settings::Instance(), &Settings::ConfigChanged, this, &BaseConfigComplexChoice::Refresh);
+  connect(this, &QComboBox::currentIndexChanged, this, &BaseConfigComplexChoice::SaveValue);
+}
+
+void BaseConfigComplexChoice::Refresh()
+{
+  auto& location = GetLocation();
+
+  QFont bf = font();
+  if (m_layer == nullptr)
+  {
+    bf.setBold(Config::GetActiveLayerForConfig(location.first) != Config::LayerType::Base ||
+               Config::GetActiveLayerForConfig(location.second) != Config::LayerType::Base);
+  }
+  else
+  {
+    bf.setBold(m_layer->Exists(location.first) || m_layer->Exists(location.second));
+  }
+  setFont(bf);
+
+  const QSignalBlocker blocker(this);
+  UpdateComboIndex();
+}
+
+void BaseConfigComplexChoice::mousePressEvent(QMouseEvent* event)
+{
+  if (event->button() == Qt::RightButton && m_layer != nullptr)
+  {
+    auto& location = GetLocation();
+    m_layer->DeleteKey(location.first);
+    m_layer->DeleteKey(location.second);
+    Config::OnConfigChanged();
+  }
+  else
+  {
+    QComboBox::mousePressEvent(event);
+  }
+};

@@ -27,7 +27,7 @@ private:
   void LoadSettings();
   void SaveSettings();
 
-  void OnBackendChanged(const QString& backend_name);
+  void OnBackendChanged();
 
   // EFB
   ConfigBool* m_skip_efb_cpu;

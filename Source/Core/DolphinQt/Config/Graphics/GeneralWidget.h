@@ -34,17 +34,17 @@ public:
   GeneralWidget(GameConfigWidget* parent, Config::Layer* layer);
 
 signals:
-  void BackendChanged(const QString& backend);
+  void BackendChanged();
 
 private:
   void LoadSettings();
-  void BackendWarning();
+  void OnBackendSelected();
 
   void CreateWidgets();
   void ConnectWidgets();
   void AddDescriptions();
 
-  void OnBackendChanged(const QString& backend_name);
+  void OnBackendChanged();
   void OnEmulationStateChanged(bool running);
 
   // Video

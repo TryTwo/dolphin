@@ -256,8 +256,10 @@ void GameConfigWidget::CreateWidgets()
                             "settings.\nRight-click to remove user settings."));
   auto help_label_icon = new QLabel();
   help_label_icon->setPixmap(help_icon.pixmap(12, 12));
-  help_label_icon->setToolTip(tr("Italics mark a default game setting, bold marks user "
-                                 "settings.\nRight-click to remove user settings."));
+  help_label_icon->setToolTip(
+      tr("Italics mark a default game setting, bold marks user "
+         "settings.\nRight-click to remove user settings.\n AA settings are disabled when the "
+         "global backend doesn't match the game setting."));
   auto* help_layout = new QHBoxLayout();
   help_layout->addWidget(help_label);
   help_layout->addWidget(help_label_icon);

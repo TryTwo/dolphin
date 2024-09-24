@@ -164,11 +164,12 @@ void GeneralWidget::CreateWidgets()
 void GeneralWidget::ConnectWidgets()
 {
   // Video Backend
-  connect(m_backend_combo, &QComboBox::currentIndexChanged, this, &GeneralWidget::BackendWarning);
+  connect(m_backend_combo, &QComboBox::currentIndexChanged, this,
+          &GeneralWidget::OnBackendSelected);
   connect(m_adapter_combo, &QComboBox::currentIndexChanged, this, [&](int index) {
     g_Config.iAdapter = index;
     Config::SetBaseOrCurrent(Config::GFX_ADAPTER, index);
-    emit BackendChanged(QString::fromStdString(Config::Get(Config::MAIN_GFX_BACKEND)));
+    emit BackendChanged();
   });
   connect(m_aspect_combo, qOverload<int>(&QComboBox::currentIndexChanged), this, [&](int index) {
     const bool is_custom_aspect_ratio = (index == static_cast<int>(AspectMode::Custom)) ||
@@ -193,7 +194,7 @@ void GeneralWidget::LoadSettings()
   m_custom_aspect_height->setHidden(!is_custom_aspect_ratio);
 }
 
-void GeneralWidget::BackendWarning()
+void GeneralWidget::OnBackendSelected()
 {
   if (Config::GetActiveLayerForConfig(Config::MAIN_GFX_BACKEND) == Config::LayerType::Base)
   {
@@ -218,7 +219,7 @@ void GeneralWidget::BackendWarning()
   }
 
   m_previous_backend = m_backend_combo->currentIndex();
-  emit BackendChanged(m_backend_combo->currentData().toString());
+  emit BackendChanged();
 }
 
 void GeneralWidget::OnEmulationStateChanged(bool running)
@@ -230,11 +231,10 @@ void GeneralWidget::OnEmulationStateChanged(bool running)
   const bool supports_adapters = !g_Config.backend_info.Adapters.empty();
   m_adapter_combo->setEnabled(!running && supports_adapters);
 
-  std::string current_backend = m_backend_combo->currentData().toString().toStdString();
-  if (Config::Get(Config::MAIN_GFX_BACKEND) != current_backend)
+  if (m_backend_combo->currentIndex() != m_previous_backend)
   {
-    m_backend_combo->Load();
-    emit BackendChanged(QString::fromStdString(Config::Get(Config::MAIN_GFX_BACKEND)));
+    m_previous_backend = m_backend_combo->currentIndex();
+    emit BackendChanged();
   }
 }
 
@@ -352,7 +352,7 @@ void GeneralWidget::AddDescriptions()
   m_wait_for_shaders->SetDescription(tr(TR_SHADER_COMPILE_BEFORE_START_DESCRIPTION));
 }
 
-void GeneralWidget::OnBackendChanged(const QString& backend_name)
+void GeneralWidget::OnBackendChanged()
 {
   const QSignalBlocker blocker(m_adapter_combo);
 
