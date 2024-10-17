@@ -10,10 +10,6 @@ class ConfigChoice;
 class ConfigInteger;
 class GameConfigWidget;
 class GraphicsWindow;
-class QCheckBox;
-class QComboBox;
-class QSpinBox;
-class ToolTipCheckBox;
 
 namespace Config
 {
@@ -28,9 +24,6 @@ public:
   AdvancedWidget(GameConfigWidget* parent, Config::Layer* layer);
 
 private:
-  void LoadSettings();
-  void SaveSettings();
-
   void CreateWidgets();
   void ConnectWidgets();
   void AddDescriptions();
@@ -59,7 +52,7 @@ private:
   ConfigBool* m_dump_xfb_target;
   ConfigBool* m_disable_vram_copies;
   ConfigBool* m_load_custom_textures;
-  ToolTipCheckBox* m_enable_graphics_mods;
+  ConfigBool* m_enable_graphics_mods;
 
   // Texture dumping
   ConfigBool* m_dump_textures;
@@ -74,7 +67,7 @@ private:
 
   // Misc
   ConfigBool* m_enable_cropping;
-  ToolTipCheckBox* m_enable_prog_scan;
+  ConfigBool* m_enable_prog_scan;
   ConfigBool* m_backend_multithreading;
   ConfigBool* m_prefer_vs_for_point_line_expansion;
   ConfigBool* m_cpu_cull;

@@ -30,7 +30,6 @@
 AdvancedWidget::AdvancedWidget(GraphicsWindow* parent)
 {
   CreateWidgets();
-  LoadSettings();
   ConnectWidgets();
   AddDescriptions();
 
@@ -47,13 +46,20 @@ AdvancedWidget::AdvancedWidget(GraphicsWindow* parent)
 AdvancedWidget::AdvancedWidget(GameConfigWidget* parent, Config::Layer* layer) : m_game_layer(layer)
 {
   CreateWidgets();
-  LoadSettings();
   ConnectWidgets();
   AddDescriptions();
+
+  connect(&Settings::Instance(), &Settings::EmulationStateChanged, this, [this](Core::State state) {
+    OnEmulationStateChanged(state != Core::State::Uninitialized);
+  });
+  OnEmulationStateChanged(Core::GetState(Core::System::GetInstance()) !=
+                          Core::State::Uninitialized);
 }
 
 void AdvancedWidget::CreateWidgets()
 {
+  const bool local_edit = m_game_layer == nullptr;
+
   auto* main_layout = new QVBoxLayout;
 
   // Performance
@@ -117,11 +123,21 @@ void AdvancedWidget::CreateWidgets()
       new ConfigBool(tr("Load Custom Textures"), Config::GFX_HIRES_TEXTURES, m_game_layer);
   m_prefetch_custom_textures = new ConfigBool(tr("Prefetch Custom Textures"),
                                               Config::GFX_CACHE_HIRES_TEXTURES, m_game_layer);
+  m_prefetch_custom_textures->setEnabled(m_load_custom_textures->isChecked());
   m_dump_efb_target = new ConfigBool(tr("Dump EFB Target"), Config::GFX_DUMP_EFB_TARGET);
   m_dump_xfb_target = new ConfigBool(tr("Dump XFB Target"), Config::GFX_DUMP_XFB_TARGET);
+
+  if (local_edit)
+  {
+    // It's haphazard to accidentally set these in a game ini.
+    m_dump_efb_target->setEnabled(false);
+    m_dump_xfb_target->setEnabled(false);
+  }
+
   m_disable_vram_copies = new ConfigBool(tr("Disable EFB VRAM Copies"),
                                          Config::GFX_HACK_DISABLE_COPY_TO_VRAM, m_game_layer);
-  m_enable_graphics_mods = new ToolTipCheckBox(tr("Enable Graphics Mods"));
+  m_enable_graphics_mods =
+      new ConfigBool(tr("Enable Graphics Mods"), Config::GFX_MODS_ENABLE, m_game_layer);
 
   utility_layout->addWidget(m_load_custom_textures, 0, 0);
   utility_layout->addWidget(m_prefetch_custom_textures, 0, 1);
@@ -139,6 +155,16 @@ void AdvancedWidget::CreateWidgets()
   m_dump_textures = new ConfigBool(tr("Enable"), Config::GFX_DUMP_TEXTURES);
   m_dump_base_textures = new ConfigBool(tr("Dump Base Textures"), Config::GFX_DUMP_BASE_TEXTURES);
   m_dump_mip_textures = new ConfigBool(tr("Dump Mip Maps"), Config::GFX_DUMP_MIP_TEXTURES);
+  m_dump_mip_textures->setEnabled(m_dump_textures->isChecked());
+  m_dump_base_textures->setEnabled(m_dump_textures->isChecked());
+
+  if (local_edit)
+  {
+    // It's haphazard to accidentally set dumping in a game ini.
+    m_dump_textures->setEnabled(false);
+    m_dump_base_textures->setEnabled(false);
+    m_dump_mip_textures->setEnabled(false);
+  }
 
   texture_dump_layout->addWidget(m_dump_textures, 0, 0);
 
@@ -157,6 +183,7 @@ void AdvancedWidget::CreateWidgets()
   m_dump_use_ffv1 =
       new ConfigBool(tr("Use Lossless Codec (FFV1)"), Config::GFX_USE_FFV1, m_game_layer);
   m_dump_bitrate = new ConfigInteger(0, 1000000, Config::GFX_BITRATE_KBPS, m_game_layer, 1000);
+  m_dump_bitrate->setEnabled(!m_dump_use_ffv1->isChecked());
   m_png_compression_level =
       new ConfigInteger(0, 9, Config::GFX_PNG_COMPRESSION_LEVEL, m_game_layer);
 
@@ -177,7 +204,8 @@ void AdvancedWidget::CreateWidgets()
   misc_box->setLayout(misc_layout);
 
   m_enable_cropping = new ConfigBool(tr("Crop"), Config::GFX_CROP, m_game_layer);
-  m_enable_prog_scan = new ToolTipCheckBox(tr("Enable Progressive Scan"));
+  m_enable_prog_scan =
+      new ConfigBool(tr("Enable Progressive Scan"), Config::SYSCONF_PROGRESSIVE_SCAN, m_game_layer);
   m_backend_multithreading = new ConfigBool(tr("Backend Multithreading"),
                                             Config::GFX_BACKEND_MULTITHREADING, m_game_layer);
   m_prefer_vs_for_point_line_expansion = new ConfigBool(
@@ -225,34 +253,16 @@ void AdvancedWidget::CreateWidgets()
 
 void AdvancedWidget::ConnectWidgets()
 {
-  connect(m_load_custom_textures, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
-  connect(m_dump_use_ffv1, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
-  connect(m_enable_prog_scan, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
-  connect(m_dump_textures, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
-  connect(m_enable_graphics_mods, &QCheckBox::toggled, this, &AdvancedWidget::SaveSettings);
-}
-
-void AdvancedWidget::LoadSettings()
-{
-  m_prefetch_custom_textures->setEnabled(Config::Get(Config::GFX_HIRES_TEXTURES));
-  m_dump_bitrate->setEnabled(!Config::Get(Config::GFX_USE_FFV1));
-
-  m_enable_prog_scan->setChecked(Config::Get(Config::SYSCONF_PROGRESSIVE_SCAN));
-  m_dump_mip_textures->setEnabled(Config::Get(Config::GFX_DUMP_TEXTURES));
-  m_dump_base_textures->setEnabled(Config::Get(Config::GFX_DUMP_TEXTURES));
-
-  SignalBlocking(m_enable_graphics_mods)->setChecked(Settings::Instance().GetGraphicModsEnabled());
-}
-
-void AdvancedWidget::SaveSettings()
-{
-  m_prefetch_custom_textures->setEnabled(Config::Get(Config::GFX_HIRES_TEXTURES));
-  m_dump_bitrate->setEnabled(!Config::Get(Config::GFX_USE_FFV1));
-
-  Config::SetBase(Config::SYSCONF_PROGRESSIVE_SCAN, m_enable_prog_scan->isChecked());
-  m_dump_mip_textures->setEnabled(Config::Get(Config::GFX_DUMP_TEXTURES));
-  m_dump_base_textures->setEnabled(Config::Get(Config::GFX_DUMP_TEXTURES));
-  Settings::Instance().SetGraphicModsEnabled(m_enable_graphics_mods->isChecked());
+  connect(m_load_custom_textures, &QCheckBox::toggled, this,
+          [this](bool checked) { m_prefetch_custom_textures->setEnabled(checked); });
+  connect(m_dump_use_ffv1, &QCheckBox::toggled, this,
+          [this](bool checked) { m_dump_bitrate->setEnabled(!checked); });
+  connect(m_dump_textures, &QCheckBox::toggled, this, [this](bool checked) {
+    m_dump_mip_textures->setEnabled(checked);
+    m_dump_base_textures->setEnabled(checked);
+  });
+  connect(m_enable_graphics_mods, &QCheckBox::toggled, this,
+          [this](bool checked) { emit Settings::Instance().EnableGfxModsChanged(checked); });
 }
 
 void AdvancedWidget::OnBackendChanged()
