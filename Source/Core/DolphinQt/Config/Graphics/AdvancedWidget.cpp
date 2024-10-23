@@ -3,11 +3,9 @@
 
 #include "DolphinQt/Config/Graphics/AdvancedWidget.h"
 
-#include <QCheckBox>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
-#include <QSpinBox>
 #include <QVBoxLayout>
 
 #include "Core/Config/GraphicsSettings.h"
@@ -76,7 +74,7 @@ void AdvancedWidget::CreateWidgets()
   m_show_speed = new ConfigBool(tr("Show % Speed"), Config::GFX_SHOW_SPEED, m_game_layer);
   m_show_speed_colors =
       new ConfigBool(tr("Show Speed Colors"), Config::GFX_SHOW_SPEED_COLORS, m_game_layer);
-  m_perf_samp_window = new ConfigInteger(0, 10000, Config::GFX_PERF_SAMP_WINDOW, m_game_layer, 100);
+  m_perf_samp_window = new ConfigInteger(0, 10000, Config::GFX_PERF_SAMP_WINDOW, 100);
   m_perf_samp_window->SetTitle(tr("Performance Sample Window (ms)"));
   m_log_render_time = new ConfigBool(tr("Log Render Time to File"),
                                      Config::GFX_LOG_RENDER_TIME_TO_FILE, m_game_layer);
@@ -179,10 +177,10 @@ void AdvancedWidget::CreateWidgets()
   m_frame_dumps_resolution_type =
       new ConfigChoice({tr("Window Resolution"), tr("Aspect Ratio Corrected Internal Resolution"),
                         tr("Raw Internal Resolution")},
-                       Config::GFX_FRAME_DUMPS_RESOLUTION_TYPE, m_game_layer);
+                       Config::GFX_FRAME_DUMPS_RESOLUTION_TYPE);
   m_dump_use_ffv1 =
       new ConfigBool(tr("Use Lossless Codec (FFV1)"), Config::GFX_USE_FFV1, m_game_layer);
-  m_dump_bitrate = new ConfigInteger(0, 1000000, Config::GFX_BITRATE_KBPS, m_game_layer, 1000);
+  m_dump_bitrate = new ConfigInteger(0, 1000000, Config::GFX_BITRATE_KBPS, 1000);
   m_dump_bitrate->setEnabled(!m_dump_use_ffv1->isChecked());
   m_png_compression_level =
       new ConfigInteger(0, 9, Config::GFX_PNG_COMPRESSION_LEVEL, m_game_layer);
@@ -206,8 +204,8 @@ void AdvancedWidget::CreateWidgets()
   m_enable_cropping = new ConfigBool(tr("Crop"), Config::GFX_CROP, m_game_layer);
   m_enable_prog_scan =
       new ConfigBool(tr("Enable Progressive Scan"), Config::SYSCONF_PROGRESSIVE_SCAN, m_game_layer);
-  m_backend_multithreading = new ConfigBool(tr("Backend Multithreading"),
-                                            Config::GFX_BACKEND_MULTITHREADING, m_game_layer);
+  m_backend_multithreading =
+      new ConfigBool(tr("Backend Multithreading"), Config::GFX_BACKEND_MULTITHREADING);
   m_prefer_vs_for_point_line_expansion = new ConfigBool(
       // i18n: VS is short for vertex shaders.
       tr("Prefer VS for Point/Line Expansion"), Config::GFX_PREFER_VS_FOR_LINE_POINT_EXPANSION,
@@ -233,8 +231,8 @@ void AdvancedWidget::CreateWidgets()
 
   m_defer_efb_access_invalidation = new ConfigBool(
       tr("Defer EFB Cache Invalidation"), Config::GFX_HACK_EFB_DEFER_INVALIDATION, m_game_layer);
-  m_manual_texture_sampling = new ConfigBool(
-      tr("Manual Texture Sampling"), Config::GFX_HACK_FAST_TEXTURE_SAMPLING, m_game_layer, true);
+  m_manual_texture_sampling =
+      new ConfigBool(tr("Manual Texture Sampling"), Config::GFX_HACK_FAST_TEXTURE_SAMPLING, true);
 
   experimental_layout->addWidget(m_defer_efb_access_invalidation, 0, 0);
   experimental_layout->addWidget(m_manual_texture_sampling, 0, 1);
