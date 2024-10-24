@@ -177,7 +177,7 @@ void AdvancedWidget::CreateWidgets()
   m_frame_dumps_resolution_type =
       new ConfigChoice({tr("Window Resolution"), tr("Aspect Ratio Corrected Internal Resolution"),
                         tr("Raw Internal Resolution")},
-                       Config::GFX_FRAME_DUMPS_RESOLUTION_TYPE);
+                       Config::GFX_FRAME_DUMPS_RESOLUTION_TYPE, m_game_layer);
   m_dump_use_ffv1 =
       new ConfigBool(tr("Use Lossless Codec (FFV1)"), Config::GFX_USE_FFV1, m_game_layer);
   m_dump_bitrate = new ConfigInteger(0, 1000000, Config::GFX_BITRATE_KBPS, 1000);
@@ -202,10 +202,11 @@ void AdvancedWidget::CreateWidgets()
   misc_box->setLayout(misc_layout);
 
   m_enable_cropping = new ConfigBool(tr("Crop"), Config::GFX_CROP, m_game_layer);
-  m_enable_prog_scan =
-      new ConfigBool(tr("Enable Progressive Scan"), Config::SYSCONF_PROGRESSIVE_SCAN, m_game_layer);
-  m_backend_multithreading =
-      new ConfigBool(tr("Backend Multithreading"), Config::GFX_BACKEND_MULTITHREADING);
+  // m_enable_prog_scan =
+  //     new ConfigBool(tr("Enable Progressive Scan"), Config::SYSCONF_PROGRESSIVE_SCAN,
+  //     m_game_layer);
+  m_backend_multithreading = new ConfigBool(tr("Backend Multithreading"),
+                                            Config::GFX_BACKEND_MULTITHREADING, m_game_layer);
   m_prefer_vs_for_point_line_expansion = new ConfigBool(
       // i18n: VS is short for vertex shaders.
       tr("Prefer VS for Point/Line Expansion"), Config::GFX_PREFER_VS_FOR_LINE_POINT_EXPANSION,
@@ -213,7 +214,7 @@ void AdvancedWidget::CreateWidgets()
   m_cpu_cull = new ConfigBool(tr("Cull Vertices on the CPU"), Config::GFX_CPU_CULL, m_game_layer);
 
   misc_layout->addWidget(m_enable_cropping, 0, 0);
-  misc_layout->addWidget(m_enable_prog_scan, 0, 1);
+  // misc_layout->addWidget(m_enable_prog_scan, 0, 1);
   misc_layout->addWidget(m_backend_multithreading, 1, 0);
   misc_layout->addWidget(m_prefer_vs_for_point_line_expansion, 1, 1);
   misc_layout->addWidget(m_cpu_cull, 2, 0);
@@ -274,7 +275,7 @@ void AdvancedWidget::OnBackendChanged()
 
 void AdvancedWidget::OnEmulationStateChanged(bool running)
 {
-  m_enable_prog_scan->setEnabled(!running);
+  // m_enable_prog_scan->setEnabled(!running);
 }
 
 void AdvancedWidget::AddDescriptions()
@@ -482,7 +483,7 @@ void AdvancedWidget::AddDescriptions()
 #endif
   m_png_compression_level->SetDescription(tr(TR_PNG_COMPRESSION_LEVEL_DESCRIPTION));
   m_enable_cropping->SetDescription(tr(TR_CROPPING_DESCRIPTION));
-  m_enable_prog_scan->SetDescription(tr(TR_PROGRESSIVE_SCAN_DESCRIPTION));
+  // m_enable_prog_scan->SetDescription(tr(TR_PROGRESSIVE_SCAN_DESCRIPTION));
   m_backend_multithreading->SetDescription(tr(TR_BACKEND_MULTITHREADING_DESCRIPTION));
   QString vsexpand_extra;
   if (!g_Config.backend_info.bSupportsGeometryShaders)
