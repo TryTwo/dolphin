@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QWidget>
+#include <QLabel>
 
 class ConfigBool;
 class ConfigChoice;
