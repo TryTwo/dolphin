@@ -1,43 +1,46 @@
 void process_fragment(in DolphinFragmentInput frag_input, out DolphinFragmentOutput frag_output)
 {
-	int layer = int(frag_input.tex0.z);
-	int r = int(efb_scale) * int(SPREAD_MULTIPLIER);
-	int coord;
-	int length;
-	int2 initial_coords = int2(frag_input.tex0.xy * source_resolution.xy);
-	vec4 brightness = float4(1.0, 1.0, 1.0, 1.0);
+	float layer = frag_input.tex0.z;
+	float r = efb_scale * SPREAD_MULTIPLIER;
+	float coord;
+	float length;
+	float2 initial_coords = frag_input.tex0.xy;;
+	float brightness = 1.0;
+
 	if (HORIZONTAL)
 	{
-		length = int(source_resolution.x);
+		length = source_resolution.x;
 		coord = initial_coords.x;
 		brightness = BRIGHTNESS_MULTIPLIER * brightness;
 	}
 	else
 	{
-		length = int(source_resolution.y);
+		length = source_resolution.y;
 		coord = initial_coords.y;
 	}
 
-	int offset;
-	vec4 count = vec4(0.0,0.0,0.0,0.0);
-	vec4 col = vec4(0.0,0.0,0.0,0.0);
-	for (offset = -r; offset <= r; offset++)
+	float offset;
+	float count = 0.0;
+	float4 col = float4(0.0,0.0,0.0,0.0);
+	for (offset = -r; offset <= r; offset += 2.0) 
 	{
-		int pos = coord + offset;
-		if (pos <= length && pos >= 0)
+		float between_pixels = -0.5 * sign(offset)/length;
+		float pos = coord + offset/length + between_pixels;
+
+		if (pos <= 1.0 && pos >= 0.0)
 		{
-			int3 sample_coords;
+			float3 sample_coords;
 			if (HORIZONTAL)
 			{
-				sample_coords = int3(int2(pos, initial_coords.y), layer);
+				sample_coords = float3(pos, initial_coords.y, layer);
 			}
 			else
 			{
-				sample_coords = int3(int2(initial_coords.x, pos), layer);
+				sample_coords = float3(initial_coords.x, pos, layer);
 			}
 			
-			col += texelFetch(samp0, sample_coords, 0);
-			count += vec4(1.0,1.0,1.0,1.0);
+			col += texture(samp0, sample_coords);
+			count += 1.0;
 		}
 	}
 	frag_output.main = col / count * brightness;
